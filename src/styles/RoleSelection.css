@@ -1,0 +1,168 @@
+.role-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0a0a1a, #1a1a2e);
+  padding: 40px 20px;
+}
+
+.role-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.role-header h1 {
+  font-size: 42px;
+  color: #fff;
+  letter-spacing: 3px;
+}
+
+.role-header p {
+  color: #888;
+  font-size: 16px;
+  margin-top: 5px;
+}
+
+.role-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  gap: 40px;
+  align-items: flex-start;
+}
+
+.role-card {
+  background: linear-gradient(145deg, #1e1e2f, #2a2a40);
+  border-radius: 20px;
+  padding: 40px 30px;
+  text-align: center;
+  cursor: pointer;
+  transition: 0.3s;
+  min-width: 280px;
+}
+
+.role-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.admin-card {
+  border: 2px solid #e94560;
+}
+
+.role-icon {
+  font-size: 60px;
+  margin-bottom: 15px;
+}
+
+.role-card h2 {
+  color: #e94560;
+  margin-bottom: 10px;
+  font-size: 24px;
+  letter-spacing: 2px;
+}
+
+.role-card p {
+  color: #888;
+  margin-bottom: 15px;
+}
+
+.role-card ul {
+  list-style: none;
+  padding: 0;
+  text-align: left;
+  margin-bottom: 20px;
+}
+
+.role-card ul li {
+  color: #aaa;
+  padding: 5px 0;
+  font-size: 14px;
+}
+
+.role-card ul li::before {
+  content: "✅ ";
+}
+
+.role-btn {
+  padding: 12px 30px;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  color: white;
+  transition: 0.3s;
+}
+
+.admin-btn {
+  background: linear-gradient(135deg, #e94560, #c0392b);
+}
+
+.admin-btn:hover {
+  background: linear-gradient(135deg, #c0392b, #a93226);
+}
+
+.teams-grid {
+  flex: 1;
+}
+
+.teams-grid-title {
+  color: #fff;
+  text-align: center;
+  margin-bottom: 20px;
+  font-size: 22px;
+  letter-spacing: 2px;
+}
+
+.teams-role-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.team-role-card {
+  background: #1e1e2f;
+  border: 2px solid #333;
+  border-radius: 15px;
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.team-role-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.team-role-logo {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  margin-bottom: 10px;
+}
+
+.team-role-card h3 {
+  margin: 0 0 5px 0;
+  font-size: 20px;
+}
+
+.team-role-card p {
+  color: #888;
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+
+.team-btn {
+  width: 100%;
+  padding: 10px;
+  font-size: 14px;
+}
+
+@media (max-width: 768px) {
+  .role-container {
+    flex-direction: column;
+  }
+  .role-card {
+    min-width: 100%;
+  }
+}

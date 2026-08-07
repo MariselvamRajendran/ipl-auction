@@ -1,0 +1,387 @@
+.team-page {
+  min-height: 100vh;
+  background: #0a0a1a;
+}
+
+.team-header {
+  background: linear-gradient(135deg, #1a1a2e, #16213e);
+  padding: 15px 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 3px solid;
+}
+
+.team-header-left {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.team-header-logo {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+}
+
+.team-header-left h1 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.team-header-left p {
+  color: #aaa;
+  margin: 0;
+  font-size: 13px;
+}
+
+.team-exit-btn {
+  background: #e74c3c;
+  color: white;
+  border: none;
+  padding: 8px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.team-progress {
+  text-align: center;
+  color: #888;
+  padding: 10px;
+  font-size: 13px;
+}
+
+.team-main {
+  display: flex;
+  gap: 25px;
+  padding: 20px 30px;
+}
+
+.team-auction-section {
+  flex: 1.2;
+}
+
+.team-squad-section {
+  flex: 0.8;
+}
+
+/* Auction Card */
+.team-auction-card {
+  background: linear-gradient(145deg, #1e1e2f, #2a2a40);
+  border: 2px solid #333;
+  border-radius: 20px;
+  padding: 30px;
+}
+
+.team-auction-card.live {
+  border-color: #e94560;
+  box-shadow: 0 0 30px rgba(233, 69, 96, 0.15);
+}
+
+.live-badge {
+  display: inline-block;
+  background: #e94560;
+  color: white;
+  padding: 5px 15px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: bold;
+  margin-bottom: 20px;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.team-player-display {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.team-player-img {
+  width: 120px;
+  height: 120px;
+  border-radius: 12px;
+  object-fit: cover;
+  border: 3px solid #e94560;
+}
+
+.team-player-placeholder {
+  width: 120px;
+  height: 120px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #e94560, #0f3460);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 50px;
+  color: white;
+  font-weight: bold;
+}
+
+.team-player-display h2 {
+  color: #fff;
+  margin: 0 0 8px 0;
+  font-size: 24px;
+}
+
+.team-role-badge {
+  display: inline-block;
+  background: rgba(233, 69, 96, 0.2);
+  color: #e94560;
+  padding: 3px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.team-base-price {
+  color: #aaa;
+  margin-top: 8px;
+  font-size: 14px;
+}
+
+.waiting-message {
+  text-align: center;
+  color: #f39c12;
+  font-size: 18px;
+  padding: 20px;
+  animation: blink 2s infinite;
+}
+
+/* Bid Info */
+.team-bid-info {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  margin: 20px 0;
+  gap: 15px;
+}
+
+.team-bid-box {
+  text-align: center;
+}
+
+.bid-label {
+  display: block;
+  color: #888;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.bid-value {
+  display: block;
+  font-size: 24px;
+  font-weight: bold;
+  color: #e94560;
+  margin-top: 5px;
+}
+
+.team-timer {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 4px solid #2ecc71;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: 0.3s;
+}
+
+.team-timer.danger {
+  border-color: #e94560;
+  animation: pulse 0.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.t-num {
+  font-size: 28px;
+  font-weight: bold;
+  color: #fff;
+  line-height: 1;
+}
+
+.t-sec {
+  font-size: 10px;
+  color: #888;
+}
+
+/* Bid Status */
+.my-bid-status {
+  text-align: center;
+  padding: 12px;
+  border-radius: 10px;
+  margin: 15px 0;
+  font-weight: bold;
+  font-size: 15px;
+}
+
+.my-bid-status.winning {
+  background: rgba(46, 204, 113, 0.15);
+  color: #2ecc71;
+  border: 1px solid #2ecc71;
+}
+
+.my-bid-status.losing {
+  background: rgba(241, 196, 15, 0.15);
+  color: #f1c40f;
+  border: 1px solid #f1c40f;
+}
+
+.bid-error {
+  text-align: center;
+  background: rgba(231, 76, 60, 0.2);
+  color: #e74c3c;
+  padding: 10px;
+  border-radius: 8px;
+  margin: 10px 0;
+  font-size: 14px;
+}
+
+/* Bid Button */
+.team-bid-btn {
+  width: 100%;
+  padding: 18px;
+  border: none;
+  border-radius: 12px;
+  font-size: 22px;
+  font-weight: bold;
+  color: white;
+  cursor: pointer;
+  transition: 0.3s;
+  margin-top: 10px;
+}
+
+.team-bid-btn:hover:not(.already-bidding) {
+  transform: scale(1.02);
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+}
+
+.team-bid-btn.already-bidding {
+  cursor: not-allowed;
+}
+
+.bid-note {
+  text-align: center;
+  color: #666;
+  margin-top: 10px;
+  font-size: 13px;
+}
+
+/* My Squad */
+.team-squad-section h3 {
+  color: #fff;
+  margin: 0 0 15px 0;
+  font-size: 18px;
+}
+
+.no-squad {
+  color: #555;
+  font-style: italic;
+  text-align: center;
+  padding: 30px;
+}
+
+.squad-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.squad-card {
+  background: #1e1e2f;
+  border-radius: 10px;
+  padding: 12px 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.squad-card-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.squad-num {
+  width: 28px;
+  height: 28px;
+  background: #e94560;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.squad-card-left h4 {
+  color: #fff;
+  margin: 0;
+  font-size: 14px;
+}
+
+.squad-role {
+  color: #888;
+  font-size: 11px;
+}
+
+.squad-cost {
+  color: #2ecc71;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+/* Budget Summary */
+.budget-summary {
+  background: #1e1e2f;
+  border-radius: 12px;
+  padding: 15px;
+  margin-top: 20px;
+}
+
+.budget-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  color: #aaa;
+  font-size: 14px;
+  border-bottom: 1px solid #2a2a40;
+}
+
+.budget-item:last-child {
+  border-bottom: none;
+}
+
+.budget-item.remaining {
+  color: #2ecc71;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+@media (max-width: 768px) {
+  .team-main {
+    flex-direction: column;
+  }
+  .team-player-display {
+    flex-direction: column;
+    text-align: center;
+  }
+  .team-bid-info {
+    flex-direction: column;
+  }
+}

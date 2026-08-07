@@ -1,0 +1,76 @@
+.app-container {
+  min-height: 100vh;
+  background: #0a0a1a;
+}
+
+.progress-bar-container {
+  max-width: 700px;
+  margin: 20px auto 0;
+  padding: 0 20px;
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  color: #888;
+  font-size: 13px;
+  margin-bottom: 5px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 6px;
+  background: #333;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #e94560, #f39c12);
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+.section-title {
+  text-align: center;
+  color: #fff;
+  margin: 30px 0 20px;
+  font-size: 22px;
+}
+
+.auction-complete-msg {
+  text-align: center;
+  padding: 30px;
+  margin: 20px auto;
+  max-width: 500px;
+  background: linear-gradient(145deg, #1e1e2f, #2a2a40);
+  border: 2px solid #2ecc71;
+  border-radius: 15px;
+}
+
+.auction-complete-msg h2 {
+  color: #2ecc71;
+  margin-bottom: 10px;
+}
+
+.auction-complete-msg p {
+  color: #aaa;
+  margin-bottom: 20px;
+}
+
+.view-result-btn {
+  background: linear-gradient(135deg, #e94560, #c0392b);
+  color: white;
+  border: none;
+  padding: 15px 40px;
+  border-radius: 10px;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.view-result-btn:hover {
+  transform: scale(1.05);
+}

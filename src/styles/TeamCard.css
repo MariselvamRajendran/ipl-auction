@@ -1,0 +1,114 @@
+.team-card {
+  background: #1e1e2f;
+  border-radius: 15px;
+  border: 2px solid #333;
+  overflow: hidden;
+  transition: all 0.3s;
+  width: 100%;
+}
+
+.team-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.team-card.selected {
+  box-shadow: 0 0 20px rgba(46, 204, 113, 0.3);
+}
+
+.team-card-header {
+  padding: 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid #333;
+}
+
+.team-logo {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+
+.team-card-header h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.team-card-body {
+  padding: 15px;
+}
+
+.team-budget,
+.team-player-count {
+  color: #ccc;
+  margin: 5px 0;
+  font-size: 14px;
+}
+
+.team-budget strong {
+  color: #2ecc71;
+}
+
+.team-card-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.select-btn {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-weight: bold;
+  font-size: 14px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.select-btn:hover {
+  opacity: 0.85;
+}
+
+.squad-toggle-btn {
+  padding: 10px 15px;
+  background: #333;
+  color: #ccc;
+  border: 1px solid #555;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: 0.3s;
+}
+
+.squad-toggle-btn:hover {
+  background: #444;
+}
+
+.squad-list {
+  margin-top: 12px;
+  background: #16162a;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.squad-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid #2a2a40;
+  color: #ccc;
+  font-size: 13px;
+}
+
+.squad-item:last-child {
+  border-bottom: none;
+}
+
+.squad-price {
+  color: #e94560;
+  font-weight: bold;
+}

@@ -1,0 +1,137 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #0a0a1a;
+  color: white;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #1e1e2f; }
+::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
+
+/* Home Page */
+.home-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0a0a1a, #1a1a2e, #0f3460);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.home-container {
+  text-align: center;
+  padding: 40px 20px;
+  max-width: 900px;
+  width: 100%;
+}
+
+.home-container h1 {
+  font-size: 48px;
+  color: #fff;
+  margin-bottom: 10px;
+  letter-spacing: 3px;
+}
+
+.home-container > p {
+  color: #888;
+  font-size: 18px;
+  margin-bottom: 50px;
+}
+
+.home-cards {
+  display: flex;
+  gap: 30px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.home-card {
+  background: #1e1e2f;
+  border: 2px solid #333;
+  border-radius: 20px;
+  padding: 40px 35px;
+  width: 300px;
+  cursor: pointer;
+  transition: 0.3s;
+  text-align: center;
+}
+
+.home-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
+  border-color: #e94560;
+}
+
+.home-card-icon {
+  font-size: 60px;
+  display: block;
+  margin-bottom: 15px;
+}
+
+.home-card h2 {
+  color: #fff;
+  margin-bottom: 8px;
+  font-size: 22px;
+}
+
+.home-card p {
+  color: #888;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.home-card-btn {
+  padding: 12px 30px;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: bold;
+  color: white;
+  cursor: pointer;
+  transition: 0.3s;
+  width: 100%;
+}
+
+.register-btn {
+  background: linear-gradient(135deg, #2ecc71, #27ae60);
+}
+
+.admin-btn-home {
+  background: linear-gradient(135deg, #e94560, #c0392b);
+}
+
+/* Top Nav - FIXED */
+.top-nav {
+  background: #1a1a2e;
+  padding: 12px 20px;
+  border-bottom: 1px solid #333;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.top-nav button {
+  background: #333;
+  color: #ccc;
+  border: none;
+  padding: 8px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: 0.3s;
+}
+
+.top-nav button:hover {
+  background: #555;
+}
+
+@media (max-width: 700px) {
+  .home-container h1 { font-size: 32px; }
+  .home-cards { flex-direction: column; align-items: center; }
+}

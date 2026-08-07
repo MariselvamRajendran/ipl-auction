@@ -1,0 +1,176 @@
+.player-card {
+  max-width: 700px;
+  margin: 30px auto;
+  background: linear-gradient(145deg, #1e1e2f, #2a2a40);
+  border-radius: 20px;
+  border: 2px solid #333;
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.player-card-inner {
+  display: flex;
+  padding: 30px;
+  gap: 30px;
+  align-items: center;
+}
+
+.player-image-section {
+  flex-shrink: 0;
+}
+
+.player-image {
+  width: 180px;
+  height: 180px;
+  border-radius: 15px;
+  object-fit: cover;
+  border: 3px solid #e94560;
+}
+
+.player-placeholder {
+  width: 180px;
+  height: 180px;
+  border-radius: 15px;
+  background: linear-gradient(135deg, #e94560, #0f3460);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 72px;
+  color: white;
+  font-weight: bold;
+}
+
+.player-info-section {
+  flex: 1;
+  color: white;
+}
+
+.player-number {
+  color: #e94560;
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.player-name {
+  font-size: 28px;
+  margin: 0 0 8px 0;
+  color: #fff;
+}
+
+.role-badge {
+  display: inline-block;
+  background: rgba(233, 69, 96, 0.2);
+  color: #e94560;
+  padding: 5px 15px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 15px;
+}
+
+.price-section {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.price-box {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 10px 20px;
+  border-radius: 10px;
+  text-align: center;
+  border: 1px solid #333;
+}
+
+.price-box.current {
+  border-color: #e94560;
+  background: rgba(233, 69, 96, 0.1);
+}
+
+.price-label {
+  display: block;
+  font-size: 11px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.price-value {
+  display: block;
+  font-size: 20px;
+  font-weight: bold;
+  color: #fff;
+  margin-top: 3px;
+}
+
+.price-value.bid {
+  color: #e94560;
+}
+
+.selected-team-display {
+  margin-bottom: 10px;
+}
+
+.team-selected {
+  color: #2ecc71;
+  font-size: 16px;
+}
+
+.no-team {
+  color: #888;
+  font-size: 14px;
+}
+
+.timer-display {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.timer-circle {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  border: 3px solid #2ecc71;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: 0.3s;
+}
+
+.timer-circle.timer-danger {
+  border-color: #e94560;
+  animation: pulse 0.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.timer-number {
+  font-size: 24px;
+  font-weight: bold;
+  color: #fff;
+  line-height: 1;
+}
+
+.timer-text {
+  font-size: 10px;
+  color: #888;
+  text-transform: uppercase;
+}
+
+@media (max-width: 600px) {
+  .player-card-inner {
+    flex-direction: column;
+    text-align: center;
+  }
+  .price-section {
+    justify-content: center;
+  }
+  .timer-display {
+    justify-content: center;
+  }
+}

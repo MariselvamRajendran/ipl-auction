@@ -1,0 +1,48 @@
+.header {
+  background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+  padding: 20px 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 3px solid #e94560;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.header-icon {
+  font-size: 40px;
+}
+
+.header h1 {
+  color: #ffffff;
+  margin: 0;
+  font-size: 28px;
+  letter-spacing: 2px;
+}
+
+.header p {
+  color: #aaa;
+  margin: 0;
+  font-size: 14px;
+}
+
+.result-btn {
+  background: #e94560;
+  color: white;
+  border: none;
+  padding: 12px 25px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.result-btn:hover {
+  background: #c0392b;
+  transform: scale(1.05);
+}
