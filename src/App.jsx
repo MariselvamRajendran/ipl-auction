@@ -71,7 +71,7 @@ function AppContent() {
       return;
     }
     if (captainPassword !== "captain2026") {
-      setCaptainError("Wrong password!");
+      setCaptainError("Wrong password! Use: captain2026");
       return;
     }
 
@@ -80,7 +80,8 @@ function AppContent() {
     try {
       const players = await getAllPlayers();
       const captain = players.find(
-        (p) => p.isCaptain && p.name.toLowerCase().trim() === captainName.toLowerCase().trim()
+        (p) => p.isCaptain === true && 
+               p.name.toLowerCase().trim() === captainName.toLowerCase().trim()
       );
 
       if (!captain) {
@@ -89,11 +90,18 @@ function AppContent() {
         return;
       }
 
+      if (!captain.captainTeam) {
+        setCaptainError("You are not assigned to any team!");
+        setCaptainLoading(false);
+        return;
+      }
+
       setLoggedInCaptain(captain);
       setIsAdmin(false);
       setUserLoggedIn(true);
     } catch (err) {
-      setCaptainError("Error loading data. Try again.");
+      console.error(err);
+      setCaptainError("Error loading data. Check internet & try again.");
     }
 
     setCaptainLoading(false);
@@ -108,7 +116,6 @@ function AppContent() {
           <p>Area Cricket League - Auction System</p>
 
           <div className="home-cards">
-            {/* Player Registration */}
             <div className="home-card" onClick={() => {
               window.history.pushState({}, "", "/register");
               setPage("register");
@@ -119,7 +126,6 @@ function AppContent() {
               <button className="home-card-btn register-btn">Register Now</button>
             </div>
 
-            {/* Admin Login */}
             <div className="home-card" onClick={() => {
               window.history.pushState({}, "", "/admin");
               setPage("admin");
@@ -130,7 +136,6 @@ function AppContent() {
               <button className="home-card-btn admin-btn-home">Admin Login</button>
             </div>
 
-            {/* Captain Login - NEW */}
             <div className="home-card" onClick={() => {
               window.history.pushState({}, "", "/captain");
               setPage("captain");
@@ -146,7 +151,6 @@ function AppContent() {
               </button>
             </div>
 
-            {/* Watch Auction */}
             <div className="home-card" onClick={() => {
               window.history.pushState({}, "", "/watch");
               setPage("watch");

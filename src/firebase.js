@@ -1,59 +1,102 @@
-// Local Storage - Simple Version
+import { initializeApp } from "firebase/app";
+import { 
+  getFirestore, 
+  collection, 
+  doc, 
+  getDocs, 
+  setDoc, 
+  deleteDoc, 
+  getDoc
+} from "firebase/firestore";
 
-const PLAYERS_KEY = "ipl_auction_players";
-const AUCTION_STATE_KEY = "ipl_auction_state";
+// 🔥 FIREBASE CONFIG
+const firebaseConfig = {
+  apiKey: "AIzaSyDhUMeLdyUs8nIk7eIAxCTLwgwnnaYM3Zo",
+  authDomain: "ipl-auction-2027.firebaseapp.com",
+  projectId: "ipl-auction-2027",
+  storageBucket: "ipl-auction-2027.firebasestorage.app",
+  messagingSenderId: "818922806903",
+  appId: "1:818922806903:web:f47885cc763745bfcef072",
+  measurementId: "G-7Y47RVDEWF"
+};
+
+const app = initializeApp(firebaseConfig);
+export const db = getFirestore(app);
+
+const PLAYERS_COLLECTION = "players";
+const AUCTION_DOC = "auction_state";
+const STATE_COLLECTION = "state";
+
+// ==================== PLAYERS ====================
 
 export const getAllPlayers = async () => {
-  const data = localStorage.getItem(PLAYERS_KEY);
-  return data ? JSON.parse(data) : [];
+  try {
+    const snapshot = await getDocs(collection(db, PLAYERS_COLLECTION));
+    return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (err) {
+    console.error("Error getting players:", err);
+    return [];
+  }
 };
 
 export const addPlayer = async (player) => {
-  const players = await getAllPlayers();
+  try {
+    const players = await getAllPlayers();
 
-  // Check duplicate name
-  const nameExists = players.find(
-    (p) => p.name.toLowerCase().trim() === player.name.toLowerCase().trim()
-  );
-  if (nameExists) {
-    return { success: false, error: "This name is already registered!" };
-  }
-
-  // Check duplicate captain for same team
-  if (player.isCaptain && player.captainTeam) {
-    const teamCaptainExists = players.find(
-      (p) => p.isCaptain === true && p.captainTeam === player.captainTeam
+    const nameExists = players.find(
+      (p) => p.name.toLowerCase().trim() === player.name.toLowerCase().trim()
     );
-    if (teamCaptainExists) {
-      return {
-        success: false,
-        error: `${player.captainTeam} already has a captain: ${teamCaptainExists.name}! Only one captain per team allowed.`
-      };
+    if (nameExists) {
+      return { success: false, error: "This name is already registered!" };
     }
+
+    if (player.isCaptain && player.captainTeam) {
+      const teamCaptainExists = players.find(
+        (p) => p.isCaptain === true && p.captainTeam === player.captainTeam
+      );
+      if (teamCaptainExists) {
+        return {
+          success: false,
+          error: `${player.captainTeam} already has a captain: ${teamCaptainExists.name}!`
+        };
+      }
+    }
+
+    const id = Date.now().toString();
+    const newPlayer = {
+      ...player,
+      registeredAt: new Date().toISOString(),
+    };
+
+    await setDoc(doc(db, PLAYERS_COLLECTION, id), newPlayer);
+    return { success: true, player: { id, ...newPlayer } };
+  } catch (err) {
+    console.error("Error adding player:", err);
+    return { success: false, error: err.message };
   }
-
-  const newPlayer = {
-    id: Date.now().toString(),
-    ...player,
-    registeredAt: new Date().toISOString(),
-  };
-
-  players.push(newPlayer);
-  localStorage.setItem(PLAYERS_KEY, JSON.stringify(players));
-  return { success: true, player: newPlayer };
 };
 
 export const deletePlayer = async (playerId) => {
-  const players = await getAllPlayers();
-  const filtered = players.filter((p) => p.id !== playerId);
-  localStorage.setItem(PLAYERS_KEY, JSON.stringify(filtered));
-  return true;
+  try {
+    await deleteDoc(doc(db, PLAYERS_COLLECTION, playerId));
+    return true;
+  } catch (err) {
+    console.error("Error deleting player:", err);
+    return false;
+  }
 };
 
 export const deleteAllPlayers = async () => {
-  localStorage.removeItem(PLAYERS_KEY);
-  localStorage.removeItem(AUCTION_STATE_KEY);
-  return true;
+  try {
+    const snapshot = await getDocs(collection(db, PLAYERS_COLLECTION));
+    const deletePromises = snapshot.docs.map(d => deleteDoc(doc(db, PLAYERS_COLLECTION, d.id)));
+    await Promise.all(deletePromises);
+    await clearAuctionState();
+    return true;
+  } catch (err) {
+    console.error("Error deleting all:", err);
+    return false;
+  }
 };
 
 export const exportPlayersJSON = async () => {
@@ -71,25 +114,75 @@ export const exportPlayersJSON = async () => {
 export const importPlayersJSON = async (jsonData) => {
   try {
     const players = JSON.parse(jsonData);
-    if (!Array.isArray(players)) return { success: false, error: "Invalid file format" };
-    localStorage.setItem(PLAYERS_KEY, JSON.stringify(players));
+    if (!Array.isArray(players)) return { success: false, error: "Invalid format" };
+    
+    for (const player of players) {
+      const id = player.id || (Date.now().toString() + Math.random());
+      const { id: _, ...playerData } = player;
+      await setDoc(doc(db, PLAYERS_COLLECTION, id.toString()), playerData);
+    }
     return { success: true, count: players.length };
   } catch (err) {
-    return { success: false, error: "Invalid JSON file" };
+    return { success: false, error: err.message };
   }
 };
 
 // ==================== AUCTION STATE ====================
 
 export const saveAuctionState = async (state) => {
-  localStorage.setItem(AUCTION_STATE_KEY, JSON.stringify(state));
+  try {
+    await setDoc(doc(db, STATE_COLLECTION, AUCTION_DOC), state);
+  } catch (err) {
+    console.error("Error saving state:", err);
+  }
 };
 
 export const getAuctionState = async () => {
-  const data = localStorage.getItem(AUCTION_STATE_KEY);
-  return data ? JSON.parse(data) : null;
+  try {
+    const docSnap = await getDoc(doc(db, STATE_COLLECTION, AUCTION_DOC));
+    return docSnap.exists() ? docSnap.data() : null;
+  } catch (err) {
+    console.error("Error getting state:", err);
+    return null;
+  }
 };
 
 export const clearAuctionState = async () => {
-  localStorage.removeItem(AUCTION_STATE_KEY);
+  try {
+    await deleteDoc(doc(db, STATE_COLLECTION, AUCTION_DOC));
+  } catch (err) {
+    console.error("Error clearing state:", err);
+  }
+};
+
+// ==================== CAPTAIN LOGIN ====================
+
+export const captainLogin = async (username, password) => {
+  try {
+    const players = await getAllPlayers();
+    const captain = players.find(
+      p => p.isCaptain === true &&
+           p.username === username &&
+           p.password === password
+    );
+    
+    if (captain) {
+      return { success: true, captain };
+    }
+    return { success: false, error: "Invalid username or password!" };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+};
+
+// ==================== ADMIN LOGIN ====================
+
+export const adminLogin = (username, password) => {
+  const ADMIN_USER = "admin";
+  const ADMIN_PASS = "admin123";
+  
+  if (username === ADMIN_USER && password === ADMIN_PASS) {
+    return { success: true };
+  }
+  return { success: false, error: "Invalid admin credentials!" };
 };
