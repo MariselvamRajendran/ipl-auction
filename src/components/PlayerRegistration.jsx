@@ -12,7 +12,7 @@ function PlayerRegistration() {
     basePrice: "1",
     isCaptain: false,
     captainTeam: "",
-    country: "Indian", // NEW: Default Indian
+    country: "Indian",
   });
 
   const [photoPreview, setPhotoPreview] = useState("");
@@ -24,6 +24,7 @@ function PlayerRegistration() {
   const [captainTeamName, setCaptainTeamName] = useState("");
   const [wasForeign, setWasForeign] = useState(false);
   const [takenTeams, setTakenTeams] = useState([]);
+  const [pasteMessage, setPasteMessage] = useState("");
 
   const roleOptions = ["Batsman", "Bowler", "All Rounder", "Wicket Keeper"];
   const battingOptions = ["Right Hand Bat", "Left Hand Bat"];
@@ -41,6 +42,39 @@ function PlayerRegistration() {
 
   useEffect(() => {
     loadTakenTeams();
+  }, []);
+
+  // ============ PASTE FROM CLIPBOARD ============
+  useEffect(() => {
+    const handlePaste = async (e) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf("image") !== -1) {
+          e.preventDefault();
+          const file = items[i].getAsFile();
+          
+          if (file.size > 2 * 1024 * 1024) {
+            setError("Photo size must be less than 2MB");
+            return;
+          }
+
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            setPhotoPreview(reader.result);
+            setError("");
+            setPasteMessage("✅ Image pasted successfully!");
+            setTimeout(() => setPasteMessage(""), 3000);
+          };
+          reader.readAsDataURL(file);
+          return;
+        }
+      }
+    };
+
+    document.addEventListener("paste", handlePaste);
+    return () => document.removeEventListener("paste", handlePaste);
   }, []);
 
   const loadTakenTeams = async () => {
@@ -89,9 +123,44 @@ function PlayerRegistration() {
     reader.readAsDataURL(file);
   };
 
+  // ============ PASTE BUTTON HANDLER ============
+  const handlePasteButton = async () => {
+    try {
+      const clipboardItems = await navigator.clipboard.read();
+      
+      for (const clipboardItem of clipboardItems) {
+        for (const type of clipboardItem.types) {
+          if (type.startsWith("image/")) {
+            const blob = await clipboardItem.getType(type);
+            
+            if (blob.size > 2 * 1024 * 1024) {
+              setError("Photo size must be less than 2MB");
+              return;
+            }
+
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              setPhotoPreview(reader.result);
+              setError("");
+              setPasteMessage("✅ Image pasted successfully!");
+              setTimeout(() => setPasteMessage(""), 3000);
+            };
+            reader.readAsDataURL(blob);
+            return;
+          }
+        }
+      }
+      
+      setError("No image found in clipboard. Copy an image first!");
+    } catch (err) {
+      setError("Cannot access clipboard. Please use Ctrl+V or file upload.");
+    }
+  };
+
   const removePhoto = () => {
     setPhotoPreview("");
-    document.getElementById("photo-input").value = "";
+    const input = document.getElementById("photo-input");
+    if (input) input.value = "";
   };
 
   const handleSubmit = async (e) => {
@@ -115,8 +184,8 @@ function PlayerRegistration() {
       basePrice: Number(formData.basePrice),
       isCaptain: formData.isCaptain,
       captainTeam: formData.isCaptain ? formData.captainTeam : "",
-      country: formData.country, // NEW
-      isForeign: formData.country === "Foreign", // NEW
+      country: formData.country,
+      isForeign: formData.country === "Foreign",
       photo: photoPreview || "",
       status: "registered",
     };
@@ -238,26 +307,109 @@ function PlayerRegistration() {
 
         <form className="reg-form" onSubmit={handleSubmit}>
           {error && <div className="reg-error">{error}</div>}
+          {pasteMessage && (
+            <div style={{
+              background: "rgba(46, 204, 113, 0.15)",
+              border: "2px solid #2ecc71",
+              color: "#2ecc71",
+              padding: "12px",
+              borderRadius: "10px",
+              textAlign: "center",
+              marginBottom: "15px",
+              fontWeight: "bold"
+            }}>
+              {pasteMessage}
+            </div>
+          )}
 
           <div className="form-group">
             <label>Player Photo</label>
-            <div className="photo-upload-section">
-              {photoPreview ? (
+            
+            {photoPreview ? (
+              <div className="photo-upload-section">
                 <div className="photo-preview-container">
                   <img src={photoPreview} alt="Preview" className="photo-preview" />
                   <button type="button" className="remove-photo-btn" onClick={removePhoto}>
                     ❌ Remove
                   </button>
                 </div>
-              ) : (
-                <label htmlFor="photo-input" className="photo-upload-box">
-                  <span className="upload-icon">📸</span>
-                  <span className="upload-text">Click to Upload Photo</span>
-                  <span className="upload-hint">Max 2MB | JPG, PNG</span>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {/* OPTION 1: File Upload */}
+                <label htmlFor="photo-input" style={{
+                  border: "2px dashed #3498db",
+                  borderRadius: "12px",
+                  padding: "25px",
+                  textAlign: "center",
+                  cursor: "pointer",
+                  background: "rgba(52, 152, 219, 0.05)",
+                  transition: "0.3s",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "8px"
+                }}>
+                  <span style={{ fontSize: "40px" }}>📸</span>
+                  <span style={{ color: "#3498db", fontWeight: "bold", fontSize: "16px" }}>
+                    Click to Upload Photo
+                  </span>
+                  <span style={{ color: "#888", fontSize: "12px" }}>
+                    Max 2MB | JPG, PNG
+                  </span>
                 </label>
-              )}
-              <input type="file" id="photo-input" accept="image/*" onChange={handlePhotoChange} style={{ display: "none" }} />
-            </div>
+                <input 
+                  type="file" 
+                  id="photo-input" 
+                  accept="image/*" 
+                  onChange={handlePhotoChange} 
+                  style={{ display: "none" }} 
+                />
+
+                {/* OR DIVIDER */}
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  margin: "5px 0"
+                }}>
+                  <div style={{ flex: 1, height: "1px", background: "#333" }}></div>
+                  <span style={{ color: "#888", fontSize: "12px", fontWeight: "bold" }}>OR</span>
+                  <div style={{ flex: 1, height: "1px", background: "#333" }}></div>
+                </div>
+
+                {/* OPTION 2: Paste from Clipboard */}
+                <button
+                  type="button"
+                  onClick={handlePasteButton}
+                  style={{
+                    border: "2px dashed #f1c40f",
+                    borderRadius: "12px",
+                    padding: "25px",
+                    textAlign: "center",
+                    cursor: "pointer",
+                    background: "rgba(241, 196, 15, 0.05)",
+                    color: "#f1c40f",
+                    transition: "0.3s",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: "8px"
+                  }}
+                >
+                  <span style={{ fontSize: "40px" }}>📋</span>
+                  <span style={{ fontWeight: "bold", fontSize: "16px" }}>
+                    Paste from Clipboard
+                  </span>
+                  <span style={{ color: "#888", fontSize: "12px" }}>
+                    Copy image (Ctrl+C) then click here
+                  </span>
+                  <span style={{ color: "#888", fontSize: "11px" }}>
+                    Or press Ctrl+V anywhere
+                  </span>
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="form-group">
@@ -265,7 +417,6 @@ function PlayerRegistration() {
             <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="Enter your full name" />
           </div>
 
-          {/* COUNTRY - NEW */}
           <div className="form-group">
             <label>Country *</label>
             <div className="country-group">
