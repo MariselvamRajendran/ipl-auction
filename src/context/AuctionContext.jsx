@@ -8,10 +8,6 @@ export function useAuction() {
   return useContext(AuctionContext);
 }
 
-// LIMITS
-const FOREIGN_LIMIT = 5;
-const WICKET_KEEPER_LIMIT = 3;
-
 export function AuctionProvider({ children }) {
   const [loggedInCaptain, setLoggedInCaptain] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -199,9 +195,11 @@ export function AuctionProvider({ children }) {
       return;
     }
 
+    // ALWAYS sync auctionReady for everyone (admin, captain, watcher)
     setAuctionReady(saved.auctionReady || false);
 
     if (!stateRef.current.isAdmin) {
+      // Non-admin (captain, watcher): sync everything
       setTeams(saved.teams || teamsData);
       setAuctionPlayers(saved.auctionPlayers || []);
       setCurrentPlayerIndex(saved.currentPlayerIndex || 0);
@@ -228,6 +226,7 @@ export function AuctionProvider({ children }) {
         }, 4000);
       }
     } else {
+      // Admin: sync bidder info
       if (saved.highestBidder && JSON.stringify(saved.highestBidder) !== JSON.stringify(stateRef.current.highestBidder)) {
         setHighestBidder(saved.highestBidder);
       }
@@ -312,50 +311,38 @@ export function AuctionProvider({ children }) {
     }
 
     const formatted = nonCaptains.map((p, index) => ({
-      id: index + 1,
-      firebaseId: p.id,
-      name: p.name,
-      role: p.role,
-      basePrice: p.basePrice,
-      image: "", // Photos removed to reduce Firebase size
-      battingStyle: p.battingStyle,
-      bowlingStyle: p.bowlingStyle,
-      country: p.country || "Indian",
-      isForeign: p.isForeign || false,
-    }));
+  id: index + 1,
+  firebaseId: p.id,
+  name: p.name,
+  role: p.role,
+  basePrice: p.basePrice,
+  image: "", // Photos removed to reduce size (fetch from players collection)
+  battingStyle: p.battingStyle,
+  bowlingStyle: p.bowlingStyle,
+  country: p.country || "Indian",
+  isForeign: p.isForeign || false,
+}));
 
     const allCaptains = allPlayers.filter((p) => p.isCaptain && p.captainTeam);
-    const updatedTeams = teamsData.map((team) => {
-      const captain = allCaptains.find((c) => c.captainTeam === team.short);
-      
-      // Clean captain data (remove photo)
-      const cleanCaptain = captain ? {
-        id: captain.id,
-        name: captain.name,
-        captainTeam: captain.captainTeam,
-        role: captain.role,
-        country: captain.country,
-        isForeign: captain.isForeign || false,
-      } : null;
-
-      // If captain is Wicket Keeper, add them to players initially (for count tracking)
-      const initialPlayers = [];
-      if (cleanCaptain && cleanCaptain.role === "Wicket Keeper") {
-        initialPlayers.push({
-          ...cleanCaptain,
-          soldPrice: 0,
-          soldTo: team.short,
-          isCaptainPlayer: true, // Mark as captain
-        });
-      }
-
-      return {
-        ...team,
-        budget: 100,
-        players: initialPlayers,
-        captain: cleanCaptain,
-      };
-    });
+const updatedTeams = teamsData.map((team) => {
+  const captain = allCaptains.find((c) => c.captainTeam === team.short);
+  // Remove captain photo to reduce size
+  const cleanCaptain = captain ? {
+    id: captain.id,
+    name: captain.name,
+    captainTeam: captain.captainTeam,
+    role: captain.role,
+    country: captain.country,
+    isForeign: captain.isForeign || false,
+  } : null;
+  
+  return {
+    ...team,
+    budget: 100,
+    players: [],
+    captain: cleanCaptain,
+  };
+});
 
     setAuctionPlayers(formatted);
     setCurrentBid(formatted[0].basePrice);
@@ -417,20 +404,11 @@ export function AuctionProvider({ children }) {
     const team = latestTeams.find((t) => t.short === loggedInCaptain.captainTeam);
     if (!team) return;
 
-    // FOREIGN PLAYER LIMIT CHECK (5 per team)
+    // FOREIGN PLAYER LIMIT CHECK
     if (currentPlayerData && currentPlayerData.isForeign) {
       const foreignCount = team.players.filter(p => p.isForeign).length;
-      if (foreignCount >= FOREIGN_LIMIT) {
-        alert(`❌ ${team.short} already has ${FOREIGN_LIMIT} foreign players! Cannot bid for more.`);
-        return;
-      }
-    }
-
-    // WICKET KEEPER LIMIT CHECK (3 per team including captain)
-    if (currentPlayerData && currentPlayerData.role === "Wicket Keeper") {
-      const keeperCount = team.players.filter(p => p.role === "Wicket Keeper").length;
-      if (keeperCount >= WICKET_KEEPER_LIMIT) {
-        alert(`❌ ${team.short} already has ${WICKET_KEEPER_LIMIT} wicket keepers! Cannot bid for more.`);
+      if (foreignCount >= 4) {
+        alert(`❌ ${team.short} already has 4 foreign players! Cannot bid for more.`);
         return;
       }
     }
@@ -543,20 +521,6 @@ export function AuctionProvider({ children }) {
     setShowResults(false);
   };
 
-  // ============ REMAINING PLAYERS BY CATEGORY ============
-  const getRemainingByCategory = () => {
-    const remaining = auctionPlayers.slice(currentPlayerIndex);
-    return {
-      total: remaining.length,
-      batsmen: remaining.filter(p => p.role === "Batsman").length,
-      bowlers: remaining.filter(p => p.role === "Bowler").length,
-      allRounders: remaining.filter(p => p.role === "All Rounder").length,
-      wicketKeepers: remaining.filter(p => p.role === "Wicket Keeper").length,
-      foreign: remaining.filter(p => p.isForeign).length,
-      indian: remaining.filter(p => !p.isForeign).length,
-    };
-  };
-
   const value = {
     loggedInCaptain,
     setLoggedInCaptain,
@@ -580,8 +544,6 @@ export function AuctionProvider({ children }) {
     showResults,
     timerEnded,
     totalPlayers: auctionPlayers.length,
-    FOREIGN_LIMIT,
-    WICKET_KEEPER_LIMIT,
     captainBid,
     startPlayerAuction,
     handleSold,
@@ -592,7 +554,6 @@ export function AuctionProvider({ children }) {
     logout,
     syncFromServer,
     closeResults,
-    getRemainingByCategory,
   };
 
   return (
