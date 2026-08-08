@@ -47,13 +47,14 @@ function AppContent() {
     if (isAdmin || loggedInCaptain) setUserLoggedIn(true);
   }, [isAdmin, loggedInCaptain]);
 
- useEffect(() => {
-  if (page === "watch" || page === "captain") {
-    syncFromServer();
-    const interval = setInterval(syncFromServer, 1000);
-    return () => clearInterval(interval);
-  }
-}, [page, syncFromServer]);
+  // ⭐ IMPORTANT: Sync for BOTH watch AND captain pages
+  useEffect(() => {
+    if (page === "watch" || page === "captain") {
+      syncFromServer();
+      const interval = setInterval(syncFromServer, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [page, syncFromServer]);
 
   const handleLogout = () => {
     logout();
@@ -99,6 +100,9 @@ function AppContent() {
       setLoggedInCaptain(captain);
       setIsAdmin(false);
       setUserLoggedIn(true);
+      
+      // Force sync immediately after login
+      await syncFromServer();
     } catch (err) {
       console.error(err);
       setCaptainError("Error loading data. Check internet & try again.");
