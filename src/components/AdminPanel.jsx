@@ -23,6 +23,8 @@ function AdminPanel({ onLogout, isWatchMode = false }) {
     totalPlayers,
     showResults,
     timerEnded,
+    isReAuctionMode,
+    reAuctionRound,
     LIMITS,
     checkTeamLimit,
     startPlayerAuction,
@@ -33,6 +35,7 @@ function AdminPanel({ onLogout, isWatchMode = false }) {
     captainBid,
     closeResults,
     getRemainingByCategory,
+    startReAuction,
   } = useAuction();
 
   const [manualResultView, setManualResultView] = useState(false);
@@ -82,7 +85,6 @@ function AdminPanel({ onLogout, isWatchMode = false }) {
     ? Number((myTeam.budget - currentBid).toFixed(1))
     : myTeam ? myTeam.budget : 0;
 
-  // Count players by role for captain team
   const getTeamCounts = (team) => {
     if (!team) return { batsmen: 0, bowlers: 0, allRounders: 0, keepers: 0, foreign: 0 };
     return {
@@ -96,10 +98,12 @@ function AdminPanel({ onLogout, isWatchMode = false }) {
 
   const myCounts = getTeamCounts(myTeam);
 
-  // Check if captain can bid for current player
   const canBidCheck = (myTeam && currentPlayer) 
     ? checkTeamLimit(myTeam, currentPlayer.role, currentPlayer.isForeign)
     : { canBid: true, reason: "" };
+
+  const isTeamFull = myTeam && myTeam.players.length >= LIMITS.TOTAL;
+  const isBudgetZero = myTeam && myTeam.budget <= 0;
 
   const getHeading = () => {
     if (isAdmin) return "👨‍💼 ADMIN PANEL";
@@ -108,9 +112,15 @@ function AdminPanel({ onLogout, isWatchMode = false }) {
   };
 
   const getSubHeading = () => {
-    if (isAdmin) return `LIVE AUCTION - ${totalPlayers} Players`;
-    if (loggedInCaptain) return `Welcome ${loggedInCaptain.name} | ${loggedInCaptain.captainTeam}`;
-    return "Watch Mode - View Only";
+    let sub = "";
+    if (isAdmin) sub = `LIVE AUCTION - ${totalPlayers} Players`;
+    else if (loggedInCaptain) sub = `Welcome ${loggedInCaptain.name} | ${loggedInCaptain.captainTeam}`;
+    else sub = "Watch Mode - View Only";
+    
+    if (isReAuctionMode) {
+      sub += ` | 🔄 RE-AUCTION Round ${reAuctionRound}`;
+    }
+    return sub;
   };
 
   const remaining = getRemainingByCategory();
@@ -126,6 +136,15 @@ function AdminPanel({ onLogout, isWatchMode = false }) {
           <button className="admin-small-btn" onClick={() => setManualResultView(true)}>
             📊 Results
           </button>
+          {isAdmin && unsoldPlayers.length > 0 && !auctionStarted && (
+            <button 
+              className="admin-small-btn" 
+              onClick={startReAuction}
+              style={{ background: "linear-gradient(135deg, #f39c12, #e67e22)" }}
+            >
+              🔄 Re-Auction ({unsoldPlayers.length})
+            </button>
+          )}
           {isAdmin && (
             <button className="admin-small-btn reset" onClick={resetAuction}>
               🔄 Reset
@@ -136,6 +155,23 @@ function AdminPanel({ onLogout, isWatchMode = false }) {
           </button>
         </div>
       </div>
+
+      {/* RE-AUCTION MODE BANNER */}
+      {isReAuctionMode && !auctionComplete && (
+        <div style={{
+          margin: "15px 30px 0",
+          padding: "15px 20px",
+          background: "linear-gradient(90deg, rgba(243, 156, 18, 0.2), transparent)",
+          borderLeft: "5px solid #f39c12",
+          borderRadius: "10px",
+          color: "#f39c12",
+          fontSize: "16px",
+          fontWeight: "bold",
+          textAlign: "center"
+        }}>
+          🔄 RE-AUCTION ROUND {reAuctionRound} - Unsold players are being re-auctioned
+        </div>
+      )}
 
       {/* CAPTAIN TEAM INFO */}
       {loggedInCaptain && myTeam && (
@@ -159,6 +195,14 @@ function AdminPanel({ onLogout, isWatchMode = false }) {
           <div style={{ flex: 1, minWidth: "300px" }}>
             <h2 style={{ color: myTeam.color, margin: 0, fontSize: "24px" }}>
               {myTeam.name}
+              {isTeamFull && <span style={{
+                marginLeft: "10px",
+                fontSize: "12px",
+                background: "#e74c3c",
+                color: "white",
+                padding: "3px 10px",
+                borderRadius: "8px"
+              }}>SQUAD FULL</span>}
             </h2>
             <p style={{ color: "#888", margin: "5px 0 0 0", fontSize: "13px" }}>
               👑 <strong style={{ color: "#f1c40f" }}>{loggedInCaptain.name}</strong>
@@ -174,50 +218,31 @@ function AdminPanel({ onLogout, isWatchMode = false }) {
               <span style={{
                 background: myCounts.batsmen >= LIMITS.BATSMAN ? "rgba(231,76,60,0.3)" : "rgba(52,152,219,0.2)",
                 color: myCounts.batsmen >= LIMITS.BATSMAN ? "#e74c3c" : "#3498db",
-                padding: "4px 10px",
-                borderRadius: "6px",
-                fontSize: "12px",
-                fontWeight: "bold"
+                padding: "4px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: "bold"
               }}>
                 🏏 {myCounts.batsmen}/{LIMITS.BATSMAN}
               </span>
               <span style={{
                 background: myCounts.bowlers >= LIMITS.BOWLER ? "rgba(231,76,60,0.3)" : "rgba(231,76,60,0.15)",
-                color: "#e74c3c",
-                padding: "4px 10px",
-                borderRadius: "6px",
-                fontSize: "12px",
-                fontWeight: "bold"
+                color: "#e74c3c", padding: "4px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: "bold"
               }}>
                 🎯 {myCounts.bowlers}/{LIMITS.BOWLER}
               </span>
               <span style={{
                 background: myCounts.allRounders >= LIMITS.ALL_ROUNDER ? "rgba(231,76,60,0.3)" : "rgba(241,196,15,0.15)",
-                color: "#f1c40f",
-                padding: "4px 10px",
-                borderRadius: "6px",
-                fontSize: "12px",
-                fontWeight: "bold"
+                color: "#f1c40f", padding: "4px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: "bold"
               }}>
                 ⭐ {myCounts.allRounders}/{LIMITS.ALL_ROUNDER}
               </span>
               <span style={{
                 background: myCounts.keepers >= LIMITS.WICKET_KEEPER ? "rgba(231,76,60,0.3)" : "rgba(155,89,182,0.15)",
-                color: "#9b59b6",
-                padding: "4px 10px",
-                borderRadius: "6px",
-                fontSize: "12px",
-                fontWeight: "bold"
+                color: "#9b59b6", padding: "4px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: "bold"
               }}>
                 🧤 {myCounts.keepers}/{LIMITS.WICKET_KEEPER}
               </span>
               <span style={{
                 background: myCounts.foreign >= LIMITS.FOREIGN ? "rgba(231,76,60,0.3)" : "rgba(52,152,219,0.15)",
-                color: "#3498db",
-                padding: "4px 10px",
-                borderRadius: "6px",
-                fontSize: "12px",
-                fontWeight: "bold"
+                color: "#3498db", padding: "4px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: "bold"
               }}>
                 ✈️ {myCounts.foreign}/{LIMITS.FOREIGN}
               </span>
@@ -225,20 +250,20 @@ function AdminPanel({ onLogout, isWatchMode = false }) {
           </div>
 
           <div style={{
-            background: isMyTeamHighest ? "rgba(231, 76, 60, 0.15)" : "rgba(46, 204, 113, 0.15)",
-            border: `2px solid ${isMyTeamHighest ? "#e74c3c" : "#2ecc71"}`,
+            background: isBudgetZero ? "rgba(231, 76, 60, 0.3)" : (isMyTeamHighest ? "rgba(231, 76, 60, 0.15)" : "rgba(46, 204, 113, 0.15)"),
+            border: `2px solid ${isBudgetZero ? "#e74c3c" : (isMyTeamHighest ? "#e74c3c" : "#2ecc71")}`,
             padding: "15px 25px",
             borderRadius: "12px",
             textAlign: "center",
             minWidth: "180px"
           }}>
             <div style={{ fontSize: "11px", color: "#888", textTransform: "uppercase", letterSpacing: "1px" }}>
-              {isMyTeamHighest ? "After This Bid" : "Available Budget"}
+              {isBudgetZero ? "NO BUDGET" : (isMyTeamHighest ? "After This Bid" : "Available Budget")}
             </div>
             <div style={{
               fontSize: "28px",
               fontWeight: "bold",
-              color: isMyTeamHighest ? "#e74c3c" : "#2ecc71",
+              color: isBudgetZero ? "#e74c3c" : (isMyTeamHighest ? "#e74c3c" : "#2ecc71"),
               marginTop: "3px"
             }}>
               ₹{liveBudget.toFixed(1)} Cr
@@ -392,7 +417,7 @@ function AdminPanel({ onLogout, isWatchMode = false }) {
               <div style={{ fontSize: "80px", marginBottom: "20px" }}>🏆</div>
               <h2 style={{ color: "#2ecc71", marginBottom: "10px" }}>Auction Completed!</h2>
               <p style={{ color: "#888", marginBottom: "20px" }}>
-                All {totalPlayers} players have been auctioned.
+                All players have been auctioned.
               </p>
               <button
                 onClick={() => setManualResultView(true)}
@@ -456,18 +481,39 @@ function AdminPanel({ onLogout, isWatchMode = false }) {
           {/* CAPTAIN BID BUTTON */}
           {currentPlayer && loggedInCaptain && auctionStarted && myTeam && !auctionComplete && !timerEnded && (
             <div className="admin-controls" style={{ marginTop: "20px" }}>
-              {!canBidCheck.canBid ? (
-                // Show disabled button with reason
+              {isTeamFull ? (
                 <div style={{
-                  flex: 1,
-                  padding: "25px",
+                  flex: 1, padding: "25px",
+                  background: "rgba(155, 89, 182, 0.15)",
+                  border: "2px solid #9b59b6",
+                  borderRadius: "12px", textAlign: "center",
+                  color: "#9b59b6", fontSize: "18px", fontWeight: "bold"
+                }}>
+                  ✅ SQUAD COMPLETE ({LIMITS.TOTAL}/{LIMITS.TOTAL})
+                  <div style={{ fontSize: "14px", marginTop: "8px", color: "#888" }}>
+                    You can watch the auction, but cannot bid anymore
+                  </div>
+                </div>
+              ) : isBudgetZero ? (
+                <div style={{
+                  flex: 1, padding: "25px",
                   background: "rgba(231, 76, 60, 0.15)",
                   border: "2px solid #e74c3c",
-                  borderRadius: "12px",
-                  textAlign: "center",
-                  color: "#e74c3c",
-                  fontSize: "18px",
-                  fontWeight: "bold"
+                  borderRadius: "12px", textAlign: "center",
+                  color: "#e74c3c", fontSize: "18px", fontWeight: "bold"
+                }}>
+                  💰 NO BUDGET LEFT
+                  <div style={{ fontSize: "14px", marginTop: "8px", color: "#c0392b" }}>
+                    Budget: ₹0 Cr - You can still watch the auction
+                  </div>
+                </div>
+              ) : !canBidCheck.canBid ? (
+                <div style={{
+                  flex: 1, padding: "25px",
+                  background: "rgba(231, 76, 60, 0.15)",
+                  border: "2px solid #e74c3c",
+                  borderRadius: "12px", textAlign: "center",
+                  color: "#e74c3c", fontSize: "18px", fontWeight: "bold"
                 }}>
                   🚫 CANNOT BID
                   <div style={{ fontSize: "14px", marginTop: "8px", color: "#c0392b" }}>
@@ -482,12 +528,8 @@ function AdminPanel({ onLogout, isWatchMode = false }) {
                   onClick={captainBid}
                   disabled={isMyTeamHighest || myTeam.budget < nextBidAmount}
                   style={{
-                    flex: 1,
-                    padding: "25px",
-                    fontSize: "22px",
-                    fontWeight: "bold",
-                    border: "none",
-                    borderRadius: "12px",
+                    flex: 1, padding: "25px", fontSize: "22px", fontWeight: "bold",
+                    border: "none", borderRadius: "12px",
                     cursor: (isMyTeamHighest || myTeam.budget < nextBidAmount) ? "not-allowed" : "pointer",
                     color: "white",
                     background: isMyTeamHighest
@@ -495,8 +537,7 @@ function AdminPanel({ onLogout, isWatchMode = false }) {
                       : myTeam.budget < nextBidAmount
                         ? "#555"
                         : `linear-gradient(135deg, ${myTeam.color}, #c0392b)`,
-                    transition: "0.3s",
-                    boxShadow: "0 5px 25px rgba(0,0,0,0.4)"
+                    transition: "0.3s", boxShadow: "0 5px 25px rgba(0,0,0,0.4)"
                   }}
                 >
                   {isMyTeamHighest
@@ -552,6 +593,11 @@ function AdminPanel({ onLogout, isWatchMode = false }) {
             }}>
               <h3 style={{ color: myTeam.color, marginBottom: "15px", fontSize: "18px" }}>
                 🏏 My Squad ({myTeam.players.length}/{LIMITS.TOTAL})
+                {isTeamFull && <span style={{
+                  marginLeft: "10px", fontSize: "13px",
+                  background: "rgba(46, 204, 113, 0.2)", color: "#2ecc71",
+                  padding: "3px 10px", borderRadius: "8px"
+                }}>✅ COMPLETE</span>}
               </h3>
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                 {myTeam.players.map((p, i) => (
@@ -614,18 +660,36 @@ function AdminPanel({ onLogout, isWatchMode = false }) {
               {teams.map((team) => {
                 const isBidding = highestBidder && highestBidder.id === team.id;
                 const counts = getTeamCounts(team);
+                const teamFull = team.players.length >= LIMITS.TOTAL;
+                const teamBudgetZero = team.budget <= 0;
 
                 return (
                   <div
                     key={team.id}
                     className={`admin-team-row ${isBidding ? "is-bidding" : ""}`}
-                    style={{ borderLeftColor: team.color, cursor: "default" }}
+                    style={{ 
+                      borderLeftColor: team.color, 
+                      cursor: "default",
+                      opacity: (teamFull || teamBudgetZero) ? 0.6 : 1
+                    }}
                   >
                     <div className="admin-team-row-header">
                       <img src={team.logo} alt={team.short} className="admin-team-logo"
                         onError={(e) => { e.target.style.display = "none"; }} />
                       <div style={{ flex: 1 }}>
-                        <h4 style={{ color: team.color }}>{team.short}</h4>
+                        <h4 style={{ color: team.color }}>
+                          {team.short}
+                          {teamFull && <span style={{
+                            marginLeft: "8px", fontSize: "10px",
+                            background: "#2ecc71", color: "white",
+                            padding: "2px 6px", borderRadius: "4px"
+                          }}>FULL</span>}
+                          {teamBudgetZero && !teamFull && <span style={{
+                            marginLeft: "8px", fontSize: "10px",
+                            background: "#e74c3c", color: "white",
+                            padding: "2px 6px", borderRadius: "4px"
+                          }}>NO BUDGET</span>}
+                        </h4>
                         <span className="admin-team-budget">
                           💰 ₹{team.budget.toFixed(1)} Cr | 👥 {team.players.length}/{LIMITS.TOTAL}
                           {team.captain && (

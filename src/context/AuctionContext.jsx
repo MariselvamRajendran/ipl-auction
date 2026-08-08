@@ -8,7 +8,7 @@ export function useAuction() {
   return useContext(AuctionContext);
 }
 
-// ============ TEAM LIMITS ============
+// TEAM LIMITS
 const LIMITS = {
   BATSMAN: 4,
   BOWLER: 3,
@@ -37,6 +37,8 @@ export function AuctionProvider({ children }) {
   const [auctionReady, setAuctionReady] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [timerEnded, setTimerEnded] = useState(false);
+  const [isReAuctionMode, setIsReAuctionMode] = useState(false); // NEW
+  const [reAuctionRound, setReAuctionRound] = useState(0); // NEW
 
   const stateRef = useRef({});
   const isProcessingRef = useRef(false);
@@ -48,6 +50,7 @@ export function AuctionProvider({ children }) {
       teams, auctionPlayers, currentPlayerIndex, currentBid, highestBidder,
       unsoldPlayers, auctionComplete, auctionStarted, auctionReady,
       bidHistory, timer, isTimerRunning, showSold, soldInfo, isAdmin,
+      isReAuctionMode, reAuctionRound,
     };
   });
 
@@ -59,12 +62,10 @@ export function AuctionProvider({ children }) {
   const checkTeamLimit = (team, playerRole, isForeign) => {
     const players = team.players || [];
     
-    // Total limit
     if (players.length >= LIMITS.TOTAL) {
       return { canBid: false, reason: `Team is FULL (${LIMITS.TOTAL}/${LIMITS.TOTAL})` };
     }
 
-    // Foreign limit
     if (isForeign) {
       const foreignCount = players.filter(p => p.isForeign).length;
       if (foreignCount >= LIMITS.FOREIGN) {
@@ -72,7 +73,6 @@ export function AuctionProvider({ children }) {
       }
     }
 
-    // Role limit
     const roleCount = players.filter(p => p.role === playerRole).length;
     
     if (playerRole === "Batsman" && roleCount >= LIMITS.BATSMAN) {
@@ -90,6 +90,89 @@ export function AuctionProvider({ children }) {
 
     return { canBid: true, reason: "" };
   };
+
+  // ============ CHECK IF ANY TEAM CAN BID ============
+  const canAnyTeamBid = (teamsToCheck, player) => {
+    if (!player) return false;
+    for (const team of teamsToCheck) {
+      const check = checkTeamLimit(team, player.role, player.isForeign);
+      if (check.canBid && team.budget >= player.basePrice) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  // ============ START RE-AUCTION ============
+  const startReAuction = useCallback(async () => {
+    console.log("🔄 Starting re-auction with unsold players");
+    
+    const currentUnsold = stateRef.current.unsoldPlayers;
+    
+    if (currentUnsold.length === 0) {
+      alert("No unsold players for re-auction!");
+      return;
+    }
+
+    // Filter unsold players - only those that at least one team can bid for
+    const currentTeams = stateRef.current.teams;
+    const validUnsold = currentUnsold.filter(player => canAnyTeamBid(currentTeams, player));
+
+    if (validUnsold.length === 0) {
+      alert("No teams can bid for unsold players. Auction Complete!");
+      setAuctionComplete(true);
+      setShowResults(true);
+      return;
+    }
+
+    // Re-number players
+    const reformatted = validUnsold.map((p, index) => ({
+      ...p,
+      id: index + 1,
+    }));
+
+    lastProcessedIndexRef.current = -1;
+    isProcessingRef.current = false;
+
+    setAuctionPlayers(reformatted);
+    setCurrentPlayerIndex(0);
+    setCurrentBid(reformatted[0].basePrice);
+    setUnsoldPlayers([]);
+    setAuctionComplete(false);
+    setShowResults(false);
+    setHighestBidder(null);
+    setBidHistory([]);
+    setAuctionStarted(false);
+    setTimer(30);
+    setIsTimerRunning(false);
+    setTimerEnded(false);
+    setIsReAuctionMode(true);
+    setReAuctionRound(stateRef.current.reAuctionRound + 1);
+
+    await saveAuctionState({
+      teams: currentTeams,
+      auctionPlayers: reformatted,
+      currentPlayerIndex: 0,
+      currentBid: reformatted[0].basePrice,
+      highestBidder: null,
+      unsoldPlayers: [],
+      auctionComplete: false,
+      auctionStarted: false,
+      auctionReady: true,
+      bidHistory: [],
+      timer: 30,
+      isTimerRunning: false,
+      showSold: false,
+      soldInfo: null,
+      soldPlayerId: null,
+      timerEnded: false,
+      isReAuctionMode: true,
+      reAuctionRound: stateRef.current.reAuctionRound + 1,
+      lastUpdate: Date.now(),
+    });
+
+    alert(`🔄 Re-Auction Round ${stateRef.current.reAuctionRound + 1} started with ${reformatted.length} unsold players!`);
+  }, []);
 
   // ============ GO TO NEXT PLAYER ============
   const goToNextPlayer = useCallback(async (updatedTeams, updatedUnsold, fromIndex) => {
@@ -109,8 +192,6 @@ export function AuctionProvider({ children }) {
     if (idx < players.length - 1) {
       const nextIndex = idx + 1;
       const nextBid = players[nextIndex].basePrice;
-
-      console.log(`✅ Next: ${players[nextIndex].name}`);
 
       setCurrentPlayerIndex(nextIndex);
       setCurrentBid(nextBid);
@@ -138,36 +219,142 @@ export function AuctionProvider({ children }) {
         soldInfo: null,
         soldPlayerId: null,
         timerEnded: false,
+        isReAuctionMode: stateRef.current.isReAuctionMode,
+        reAuctionRound: stateRef.current.reAuctionRound,
         lastUpdate: Date.now(),
       });
     } else {
-      setAuctionComplete(true);
-      setAuctionStarted(false);
-      setShowResults(true);
-      setIsTimerRunning(false);
-      setTimerEnded(false);
+      // Current auction round complete
+      console.log(`🏁 Round complete. Unsold: ${unsoldToUse.length}`);
+      
+      // Check if unsold players exist AND any team can still bid
+      if (unsoldToUse.length > 0) {
+        const canReAuction = unsoldToUse.some(player => canAnyTeamBid(teamsToUse, player));
+        
+        if (canReAuction) {
+          // Prompt for re-auction
+          setAuctionComplete(false);
+          setAuctionStarted(false);
+          setIsTimerRunning(false);
+          setTimerEnded(false);
+          
+          await saveAuctionState({
+            teams: teamsToUse,
+            auctionPlayers: players,
+            currentPlayerIndex: idx,
+            currentBid: 0,
+            highestBidder: null,
+            unsoldPlayers: unsoldToUse,
+            auctionComplete: false,
+            auctionStarted: false,
+            auctionReady: true,
+            bidHistory: [],
+            timer: 0,
+            isTimerRunning: false,
+            showSold: false,
+            soldInfo: null,
+            soldPlayerId: null,
+            timerEnded: false,
+            roundEnded: true, // NEW - triggers re-auction prompt
+            isReAuctionMode: stateRef.current.isReAuctionMode,
+            reAuctionRound: stateRef.current.reAuctionRound,
+            lastUpdate: Date.now(),
+          });
+          
+          // Auto-show re-auction prompt
+          setTimeout(() => {
+            if (window.confirm(`🔄 ${unsoldToUse.length} unsold players! Start Re-Auction Round ${stateRef.current.reAuctionRound + 1}?`)) {
+              startReAuction();
+            } else {
+              // Complete the auction
+              setAuctionComplete(true);
+              setShowResults(true);
+              saveAuctionState({
+                teams: teamsToUse,
+                auctionPlayers: players,
+                currentPlayerIndex: idx,
+                currentBid: 0,
+                highestBidder: null,
+                unsoldPlayers: unsoldToUse,
+                auctionComplete: true,
+                auctionStarted: false,
+                auctionReady: true,
+                bidHistory: [],
+                timer: 0,
+                isTimerRunning: false,
+                showSold: false,
+                soldInfo: null,
+                timerEnded: false,
+                isReAuctionMode: false,
+                reAuctionRound: 0,
+                lastUpdate: Date.now(),
+              });
+            }
+          }, 500);
+        } else {
+          // No team can bid - complete auction
+          console.log("🏆 Auction complete - no team can bid for unsold");
+          setAuctionComplete(true);
+          setAuctionStarted(false);
+          setShowResults(true);
+          setIsTimerRunning(false);
+          setTimerEnded(false);
 
-      await saveAuctionState({
-        teams: teamsToUse,
-        auctionPlayers: players,
-        currentPlayerIndex: idx,
-        currentBid: 0,
-        highestBidder: null,
-        unsoldPlayers: unsoldToUse,
-        auctionComplete: true,
-        auctionStarted: false,
-        auctionReady: true,
-        bidHistory: [],
-        timer: 0,
-        isTimerRunning: false,
-        showSold: false,
-        soldInfo: null,
-        soldPlayerId: null,
-        timerEnded: false,
-        lastUpdate: Date.now(),
-      });
+          await saveAuctionState({
+            teams: teamsToUse,
+            auctionPlayers: players,
+            currentPlayerIndex: idx,
+            currentBid: 0,
+            highestBidder: null,
+            unsoldPlayers: unsoldToUse,
+            auctionComplete: true,
+            auctionStarted: false,
+            auctionReady: true,
+            bidHistory: [],
+            timer: 0,
+            isTimerRunning: false,
+            showSold: false,
+            soldInfo: null,
+            soldPlayerId: null,
+            timerEnded: false,
+            isReAuctionMode: false,
+            reAuctionRound: 0,
+            lastUpdate: Date.now(),
+          });
+        }
+      } else {
+        // No unsold - auction complete
+        console.log("🏆 Auction complete - no unsold");
+        setAuctionComplete(true);
+        setAuctionStarted(false);
+        setShowResults(true);
+        setIsTimerRunning(false);
+        setTimerEnded(false);
+
+        await saveAuctionState({
+          teams: teamsToUse,
+          auctionPlayers: players,
+          currentPlayerIndex: idx,
+          currentBid: 0,
+          highestBidder: null,
+          unsoldPlayers: unsoldToUse,
+          auctionComplete: true,
+          auctionStarted: false,
+          auctionReady: true,
+          bidHistory: [],
+          timer: 0,
+          isTimerRunning: false,
+          showSold: false,
+          soldInfo: null,
+          soldPlayerId: null,
+          timerEnded: false,
+          isReAuctionMode: false,
+          reAuctionRound: 0,
+          lastUpdate: Date.now(),
+        });
+      }
     }
-  }, []);
+  }, [startReAuction]);
 
   // ============ HANDLE SOLD ============
   const handleSold = useCallback(async () => {
@@ -285,6 +472,8 @@ export function AuctionProvider({ children }) {
       setTimer(saved.timer !== undefined ? saved.timer : 30);
       setIsTimerRunning(saved.isTimerRunning || false);
       setTimerEnded(saved.timerEnded || false);
+      setIsReAuctionMode(saved.isReAuctionMode || false);
+      setReAuctionRound(saved.reAuctionRound || 0);
 
       if (saved.auctionComplete && !showResults) {
         setShowResults(true);
@@ -409,7 +598,6 @@ export function AuctionProvider({ children }) {
         isForeign: captain.isForeign || false,
       } : null;
 
-      // Captain automatic-a add aagum (any role)
       const initialPlayers = [];
       if (cleanCaptain) {
         initialPlayers.push({
@@ -446,6 +634,8 @@ export function AuctionProvider({ children }) {
     setTimer(30);
     setIsTimerRunning(false);
     setTimerEnded(false);
+    setIsReAuctionMode(false);
+    setReAuctionRound(0);
 
     await saveAuctionState({
       teams: updatedTeams,
@@ -464,6 +654,8 @@ export function AuctionProvider({ children }) {
       soldInfo: null,
       soldPlayerId: null,
       timerEnded: false,
+      isReAuctionMode: false,
+      reAuctionRound: 0,
       lastUpdate: Date.now(),
     });
 
@@ -493,7 +685,6 @@ export function AuctionProvider({ children }) {
     const team = latestTeams.find((t) => t.short === loggedInCaptain.captainTeam);
     if (!team) return;
 
-    // Check ALL team limits
     const limitCheck = checkTeamLimit(team, currentPlayerData.role, currentPlayerData.isForeign);
     if (!limitCheck.canBid) {
       alert(`❌ ${team.short}: ${limitCheck.reason}`);
@@ -568,6 +759,8 @@ export function AuctionProvider({ children }) {
       showSold: false,
       soldInfo: null,
       timerEnded: false,
+      isReAuctionMode,
+      reAuctionRound,
       lastUpdate: Date.now(),
     });
   };
@@ -599,6 +792,8 @@ export function AuctionProvider({ children }) {
       setAuctionPlayers([]);
       setShowResults(false);
       setTimerEnded(false);
+      setIsReAuctionMode(false);
+      setReAuctionRound(0);
     }
   };
 
@@ -647,6 +842,8 @@ export function AuctionProvider({ children }) {
     auctionPlayers,
     showResults,
     timerEnded,
+    isReAuctionMode,
+    reAuctionRound,
     totalPlayers: auctionPlayers.length,
     LIMITS,
     checkTeamLimit,
@@ -661,6 +858,7 @@ export function AuctionProvider({ children }) {
     syncFromServer,
     closeResults,
     getRemainingByCategory,
+    startReAuction,
   };
 
   return (
