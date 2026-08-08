@@ -190,12 +190,16 @@ export function AuctionProvider({ children }) {
   // ============ SYNC FROM SERVER ============
   const syncFromServer = useCallback(async () => {
     const saved = await getAuctionState();
-    if (!saved) return;
+    if (!saved) {
+      setAuctionReady(false);
+      return;
+    }
 
+    // ALWAYS sync auctionReady for everyone (admin, captain, watcher)
     setAuctionReady(saved.auctionReady || false);
 
     if (!stateRef.current.isAdmin) {
-      // Non-admin: sync everything
+      // Non-admin (captain, watcher): sync everything
       setTeams(saved.teams || teamsData);
       setAuctionPlayers(saved.auctionPlayers || []);
       setCurrentPlayerIndex(saved.currentPlayerIndex || 0);
@@ -236,7 +240,6 @@ export function AuctionProvider({ children }) {
         setTimer(15);
         setIsTimerRunning(true);
       }
-      // Sync teams (when player sold)
       if (saved.teams && JSON.stringify(saved.teams.map(t => t.players.length)) !== JSON.stringify(stateRef.current.teams.map(t => t.players.length))) {
         setTeams(saved.teams);
       }
@@ -368,7 +371,7 @@ export function AuctionProvider({ children }) {
     return true;
   };
 
-  // ============ CAPTAIN BID (ONLY ONE!) ============
+  // ============ CAPTAIN BID ============
   const captainBid = async () => {
     if (!loggedInCaptain) return;
 
@@ -459,7 +462,7 @@ export function AuctionProvider({ children }) {
       unsoldPlayers,
       auctionComplete,
       auctionStarted: true,
-      auctionReady,
+      auctionReady: true,
       bidHistory: [],
       timer: 30,
       isTimerRunning: true,
