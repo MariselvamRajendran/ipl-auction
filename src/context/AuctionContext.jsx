@@ -311,28 +311,38 @@ export function AuctionProvider({ children }) {
     }
 
     const formatted = nonCaptains.map((p, index) => ({
-      id: index + 1,
-      firebaseId: p.id,
-      name: p.name,
-      role: p.role,
-      basePrice: p.basePrice,
-      image: p.photo || "",
-      battingStyle: p.battingStyle,
-      bowlingStyle: p.bowlingStyle,
-      country: p.country || "Indian",
-      isForeign: p.isForeign || false,
-    }));
+  id: index + 1,
+  firebaseId: p.id,
+  name: p.name,
+  role: p.role,
+  basePrice: p.basePrice,
+  image: "", // Photos removed to reduce size (fetch from players collection)
+  battingStyle: p.battingStyle,
+  bowlingStyle: p.bowlingStyle,
+  country: p.country || "Indian",
+  isForeign: p.isForeign || false,
+}));
 
     const allCaptains = allPlayers.filter((p) => p.isCaptain && p.captainTeam);
-    const updatedTeams = teamsData.map((team) => {
-      const captain = allCaptains.find((c) => c.captainTeam === team.short);
-      return {
-        ...team,
-        budget: 100,
-        players: [],
-        captain: captain || null,
-      };
-    });
+const updatedTeams = teamsData.map((team) => {
+  const captain = allCaptains.find((c) => c.captainTeam === team.short);
+  // Remove captain photo to reduce size
+  const cleanCaptain = captain ? {
+    id: captain.id,
+    name: captain.name,
+    captainTeam: captain.captainTeam,
+    role: captain.role,
+    country: captain.country,
+    isForeign: captain.isForeign || false,
+  } : null;
+  
+  return {
+    ...team,
+    budget: 100,
+    players: [],
+    captain: cleanCaptain,
+  };
+});
 
     setAuctionPlayers(formatted);
     setCurrentBid(formatted[0].basePrice);
