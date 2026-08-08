@@ -47,13 +47,13 @@ function AppContent() {
     if (isAdmin || loggedInCaptain) setUserLoggedIn(true);
   }, [isAdmin, loggedInCaptain]);
 
-  useEffect(() => {
-    if (page === "watch") {
-      syncFromServer();
-      const interval = setInterval(syncFromServer, 1000);
-      return () => clearInterval(interval);
-    }
-  }, [page, syncFromServer]);
+ useEffect(() => {
+  if (page === "watch" || page === "captain") {
+    syncFromServer();
+    const interval = setInterval(syncFromServer, 1000);
+    return () => clearInterval(interval);
+  }
+}, [page, syncFromServer]);
 
   const handleLogout = () => {
     logout();
