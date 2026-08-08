@@ -8,8 +8,15 @@ export function useAuction() {
   return useContext(AuctionContext);
 }
 
-const FOREIGN_LIMIT = 5;
-const WICKET_KEEPER_LIMIT = 3;
+// ============ TEAM LIMITS ============
+const LIMITS = {
+  BATSMAN: 4,
+  BOWLER: 3,
+  WICKET_KEEPER: 2,
+  ALL_ROUNDER: 3,
+  FOREIGN: 4,
+  TOTAL: 12,
+};
 
 export function AuctionProvider({ children }) {
   const [loggedInCaptain, setLoggedInCaptain] = useState(null);
@@ -48,6 +55,42 @@ export function AuctionProvider({ children }) {
     ? auctionPlayers[currentPlayerIndex]
     : null;
 
+  // ============ CHECK TEAM LIMITS ============
+  const checkTeamLimit = (team, playerRole, isForeign) => {
+    const players = team.players || [];
+    
+    // Total limit
+    if (players.length >= LIMITS.TOTAL) {
+      return { canBid: false, reason: `Team is FULL (${LIMITS.TOTAL}/${LIMITS.TOTAL})` };
+    }
+
+    // Foreign limit
+    if (isForeign) {
+      const foreignCount = players.filter(p => p.isForeign).length;
+      if (foreignCount >= LIMITS.FOREIGN) {
+        return { canBid: false, reason: `Foreign limit reached (${LIMITS.FOREIGN}/${LIMITS.FOREIGN})` };
+      }
+    }
+
+    // Role limit
+    const roleCount = players.filter(p => p.role === playerRole).length;
+    
+    if (playerRole === "Batsman" && roleCount >= LIMITS.BATSMAN) {
+      return { canBid: false, reason: `Batsman limit reached (${LIMITS.BATSMAN}/${LIMITS.BATSMAN})` };
+    }
+    if (playerRole === "Bowler" && roleCount >= LIMITS.BOWLER) {
+      return { canBid: false, reason: `Bowler limit reached (${LIMITS.BOWLER}/${LIMITS.BOWLER})` };
+    }
+    if (playerRole === "Wicket Keeper" && roleCount >= LIMITS.WICKET_KEEPER) {
+      return { canBid: false, reason: `Wicket Keeper limit reached (${LIMITS.WICKET_KEEPER}/${LIMITS.WICKET_KEEPER})` };
+    }
+    if (playerRole === "All Rounder" && roleCount >= LIMITS.ALL_ROUNDER) {
+      return { canBid: false, reason: `All Rounder limit reached (${LIMITS.ALL_ROUNDER}/${LIMITS.ALL_ROUNDER})` };
+    }
+
+    return { canBid: true, reason: "" };
+  };
+
   // ============ GO TO NEXT PLAYER ============
   const goToNextPlayer = useCallback(async (updatedTeams, updatedUnsold, fromIndex) => {
     const teamsToUse = updatedTeams || stateRef.current.teams;
@@ -55,20 +98,19 @@ export function AuctionProvider({ children }) {
     const players = stateRef.current.auctionPlayers;
     const idx = fromIndex !== undefined ? fromIndex : stateRef.current.currentPlayerIndex;
 
-    // Prevent duplicate processing of same index
     if (lastProcessedIndexRef.current === idx) {
-      console.log(`⚠️ Index ${idx} already processed, skipping duplicate call`);
+      console.log(`⚠️ Index ${idx} already processed`);
       return;
     }
     lastProcessedIndexRef.current = idx;
 
-    console.log(`📌 Moving from player index: ${idx}, Total: ${players.length}`);
+    console.log(`📌 Moving from index: ${idx}`);
 
     if (idx < players.length - 1) {
       const nextIndex = idx + 1;
       const nextBid = players[nextIndex].basePrice;
 
-      console.log(`✅ Next player: ${nextIndex + 1} - ${players[nextIndex].name}`);
+      console.log(`✅ Next: ${players[nextIndex].name}`);
 
       setCurrentPlayerIndex(nextIndex);
       setCurrentBid(nextBid);
@@ -99,7 +141,6 @@ export function AuctionProvider({ children }) {
         lastUpdate: Date.now(),
       });
     } else {
-      console.log("🏆 Auction complete!");
       setAuctionComplete(true);
       setAuctionStarted(false);
       setShowResults(true);
@@ -130,12 +171,8 @@ export function AuctionProvider({ children }) {
 
   // ============ HANDLE SOLD ============
   const handleSold = useCallback(async () => {
-    if (isProcessingRef.current) {
-      console.log("⚠️ Already processing, skipping...");
-      return;
-    }
+    if (isProcessingRef.current) return;
     isProcessingRef.current = true;
-    console.log("🔨 SOLD started");
 
     try {
       const latest = await getAuctionState();
@@ -150,8 +187,6 @@ export function AuctionProvider({ children }) {
         alert("No bidder yet!");
         return;
       }
-
-      console.log(`🎯 Selling ${player.name} at index ${currentIdx}`);
 
       const soldPlayer = {
         ...player,
@@ -192,30 +227,23 @@ export function AuctionProvider({ children }) {
         lastUpdate: Date.now(),
       });
 
-      // Wait 4 seconds
       await new Promise(resolve => setTimeout(resolve, 4000));
       
-      console.log("⏭️ Moving to next after overlay");
       setShowSold(false);
       setSoldInfo(null);
       
       await goToNextPlayer(updatedTeams, stateRef.current.unsoldPlayers, currentIdx);
     } catch (err) {
-      console.error("❌ Error:", err);
+      console.error("Error:", err);
     } finally {
       isProcessingRef.current = false;
-      console.log("✅ SOLD complete");
     }
   }, [goToNextPlayer]);
 
   // ============ HANDLE UNSOLD ============
   const handleUnsold = useCallback(async () => {
-    if (isProcessingRef.current) {
-      console.log("⚠️ Already processing, skipping...");
-      return;
-    }
+    if (isProcessingRef.current) return;
     isProcessingRef.current = true;
-    console.log("❌ UNSOLD started");
 
     try {
       const currentIdx = stateRef.current.currentPlayerIndex;
@@ -228,10 +256,9 @@ export function AuctionProvider({ children }) {
 
       await goToNextPlayer(stateRef.current.teams, newUnsold, currentIdx);
     } catch (err) {
-      console.error("❌ Error:", err);
+      console.error("Error:", err);
     } finally {
       isProcessingRef.current = false;
-      console.log("✅ UNSOLD complete");
     }
   }, [goToNextPlayer]);
 
@@ -263,7 +290,6 @@ export function AuctionProvider({ children }) {
         setShowResults(true);
       }
 
-      // Show sold overlay only ONCE per unique soldPlayerId
       if (saved.showSold && saved.soldInfo && saved.soldPlayerId && lastShownSoldIdRef.current !== saved.soldPlayerId) {
         lastShownSoldIdRef.current = saved.soldPlayerId;
         setSoldInfo(saved.soldInfo);
@@ -274,7 +300,6 @@ export function AuctionProvider({ children }) {
         }, 4000);
       }
     } else {
-      // Admin: only sync bidder info
       if (saved.highestBidder && JSON.stringify(saved.highestBidder) !== JSON.stringify(stateRef.current.highestBidder)) {
         setHighestBidder(saved.highestBidder);
       }
@@ -384,8 +409,9 @@ export function AuctionProvider({ children }) {
         isForeign: captain.isForeign || false,
       } : null;
 
+      // Captain automatic-a add aagum (any role)
       const initialPlayers = [];
-      if (cleanCaptain && cleanCaptain.role === "Wicket Keeper") {
+      if (cleanCaptain) {
         initialPlayers.push({
           ...cleanCaptain,
           soldPrice: 0,
@@ -402,7 +428,6 @@ export function AuctionProvider({ children }) {
       };
     });
 
-    // Reset all tracking
     lastShownSoldIdRef.current = null;
     lastProcessedIndexRef.current = -1;
     isProcessingRef.current = false;
@@ -468,20 +493,11 @@ export function AuctionProvider({ children }) {
     const team = latestTeams.find((t) => t.short === loggedInCaptain.captainTeam);
     if (!team) return;
 
-    if (currentPlayerData && currentPlayerData.isForeign) {
-      const foreignCount = team.players.filter(p => p.isForeign).length;
-      if (foreignCount >= FOREIGN_LIMIT) {
-        alert(`❌ ${team.short} already has ${FOREIGN_LIMIT} foreign players!`);
-        return;
-      }
-    }
-
-    if (currentPlayerData && currentPlayerData.role === "Wicket Keeper") {
-      const keeperCount = team.players.filter(p => p.role === "Wicket Keeper").length;
-      if (keeperCount >= WICKET_KEEPER_LIMIT) {
-        alert(`❌ ${team.short} already has ${WICKET_KEEPER_LIMIT} wicket keepers!`);
-        return;
-      }
+    // Check ALL team limits
+    const limitCheck = checkTeamLimit(team, currentPlayerData.role, currentPlayerData.isForeign);
+    if (!limitCheck.canBid) {
+      alert(`❌ ${team.short}: ${limitCheck.reason}`);
+      return;
     }
 
     const newBid = latestHighest
@@ -526,7 +542,6 @@ export function AuctionProvider({ children }) {
   const startPlayerAuction = async () => {
     if (!currentPlayer) return;
 
-    // Reset processing flags for new player
     isProcessingRef.current = false;
 
     setTimer(30);
@@ -557,8 +572,6 @@ export function AuctionProvider({ children }) {
     });
   };
 
-  // ============ CLOSE SOLD OVERLAY ============
-  // IMPORTANT: This should ONLY hide the overlay, NOT advance to next player
   const closeSoldOverlay = useCallback(() => {
     setShowSold(false);
     setSoldInfo(null);
@@ -635,8 +648,8 @@ export function AuctionProvider({ children }) {
     showResults,
     timerEnded,
     totalPlayers: auctionPlayers.length,
-    FOREIGN_LIMIT,
-    WICKET_KEEPER_LIMIT,
+    LIMITS,
+    checkTeamLimit,
     captainBid,
     startPlayerAuction,
     handleSold,

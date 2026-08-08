@@ -23,6 +23,8 @@ function AdminPanel({ onLogout, isWatchMode = false }) {
     totalPlayers,
     showResults,
     timerEnded,
+    LIMITS,
+    checkTeamLimit,
     startPlayerAuction,
     handleSold,
     handleUnsold,
@@ -30,6 +32,7 @@ function AdminPanel({ onLogout, isWatchMode = false }) {
     resetAuction,
     captainBid,
     closeResults,
+    getRemainingByCategory,
   } = useAuction();
 
   const [manualResultView, setManualResultView] = useState(false);
@@ -79,10 +82,24 @@ function AdminPanel({ onLogout, isWatchMode = false }) {
     ? Number((myTeam.budget - currentBid).toFixed(1))
     : myTeam ? myTeam.budget : 0;
 
-  // Foreign check for captain
-  const foreignCount = myTeam ? myTeam.players.filter(p => p.isForeign).length : 0;
-  const isForeignPlayer = currentPlayer ? currentPlayer.isForeign : false;
-  const foreignLimitReached = isForeignPlayer && foreignCount >= 4;
+  // Count players by role for captain team
+  const getTeamCounts = (team) => {
+    if (!team) return { batsmen: 0, bowlers: 0, allRounders: 0, keepers: 0, foreign: 0 };
+    return {
+      batsmen: team.players.filter(p => p.role === "Batsman").length,
+      bowlers: team.players.filter(p => p.role === "Bowler").length,
+      allRounders: team.players.filter(p => p.role === "All Rounder").length,
+      keepers: team.players.filter(p => p.role === "Wicket Keeper").length,
+      foreign: team.players.filter(p => p.isForeign).length,
+    };
+  };
+
+  const myCounts = getTeamCounts(myTeam);
+
+  // Check if captain can bid for current player
+  const canBidCheck = (myTeam && currentPlayer) 
+    ? checkTeamLimit(myTeam, currentPlayer.role, currentPlayer.isForeign)
+    : { canBid: true, reason: "" };
 
   const getHeading = () => {
     if (isAdmin) return "👨‍💼 ADMIN PANEL";
@@ -95,6 +112,8 @@ function AdminPanel({ onLogout, isWatchMode = false }) {
     if (loggedInCaptain) return `Welcome ${loggedInCaptain.name} | ${loggedInCaptain.captainTeam}`;
     return "Watch Mode - View Only";
   };
+
+  const remaining = getRemainingByCategory();
 
   return (
     <div className="admin-page">
@@ -118,6 +137,7 @@ function AdminPanel({ onLogout, isWatchMode = false }) {
         </div>
       </div>
 
+      {/* CAPTAIN TEAM INFO */}
       {loggedInCaptain && myTeam && (
         <div style={{
           background: `linear-gradient(90deg, ${myTeam.color}33, transparent)`,
@@ -136,17 +156,72 @@ function AdminPanel({ onLogout, isWatchMode = false }) {
             style={{ width: "70px", height: "70px", objectFit: "contain" }}
             onError={(e) => { e.target.style.display = "none"; }}
           />
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 1, minWidth: "300px" }}>
             <h2 style={{ color: myTeam.color, margin: 0, fontSize: "24px" }}>
               {myTeam.name}
             </h2>
             <p style={{ color: "#888", margin: "5px 0 0 0", fontSize: "13px" }}>
-              👑 Captain: <strong style={{ color: "#f1c40f" }}>{loggedInCaptain.name}</strong>
+              👑 <strong style={{ color: "#f1c40f" }}>{loggedInCaptain.name}</strong>
               {" | "}
-              👥 Players: <strong>{myTeam.players.length}</strong>
-              {" | "}
-              ✈️ Foreign: <strong>{foreignCount}/4</strong>
+              👥 <strong>{myTeam.players.length}/{LIMITS.TOTAL}</strong>
             </p>
+            <div style={{
+              display: "flex",
+              gap: "8px",
+              marginTop: "10px",
+              flexWrap: "wrap"
+            }}>
+              <span style={{
+                background: myCounts.batsmen >= LIMITS.BATSMAN ? "rgba(231,76,60,0.3)" : "rgba(52,152,219,0.2)",
+                color: myCounts.batsmen >= LIMITS.BATSMAN ? "#e74c3c" : "#3498db",
+                padding: "4px 10px",
+                borderRadius: "6px",
+                fontSize: "12px",
+                fontWeight: "bold"
+              }}>
+                🏏 {myCounts.batsmen}/{LIMITS.BATSMAN}
+              </span>
+              <span style={{
+                background: myCounts.bowlers >= LIMITS.BOWLER ? "rgba(231,76,60,0.3)" : "rgba(231,76,60,0.15)",
+                color: "#e74c3c",
+                padding: "4px 10px",
+                borderRadius: "6px",
+                fontSize: "12px",
+                fontWeight: "bold"
+              }}>
+                🎯 {myCounts.bowlers}/{LIMITS.BOWLER}
+              </span>
+              <span style={{
+                background: myCounts.allRounders >= LIMITS.ALL_ROUNDER ? "rgba(231,76,60,0.3)" : "rgba(241,196,15,0.15)",
+                color: "#f1c40f",
+                padding: "4px 10px",
+                borderRadius: "6px",
+                fontSize: "12px",
+                fontWeight: "bold"
+              }}>
+                ⭐ {myCounts.allRounders}/{LIMITS.ALL_ROUNDER}
+              </span>
+              <span style={{
+                background: myCounts.keepers >= LIMITS.WICKET_KEEPER ? "rgba(231,76,60,0.3)" : "rgba(155,89,182,0.15)",
+                color: "#9b59b6",
+                padding: "4px 10px",
+                borderRadius: "6px",
+                fontSize: "12px",
+                fontWeight: "bold"
+              }}>
+                🧤 {myCounts.keepers}/{LIMITS.WICKET_KEEPER}
+              </span>
+              <span style={{
+                background: myCounts.foreign >= LIMITS.FOREIGN ? "rgba(231,76,60,0.3)" : "rgba(52,152,219,0.15)",
+                color: "#3498db",
+                padding: "4px 10px",
+                borderRadius: "6px",
+                fontSize: "12px",
+                fontWeight: "bold"
+              }}>
+                ✈️ {myCounts.foreign}/{LIMITS.FOREIGN}
+              </span>
+            </div>
           </div>
 
           <div style={{
@@ -167,6 +242,63 @@ function AdminPanel({ onLogout, isWatchMode = false }) {
               marginTop: "3px"
             }}>
               ₹{liveBudget.toFixed(1)} Cr
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* REMAINING PLAYERS */}
+      {!auctionComplete && auctionStarted && (
+        <div style={{
+          margin: "15px 30px 0",
+          padding: "15px 20px",
+          background: "linear-gradient(135deg, #1e1e2f, #16162a)",
+          borderRadius: "12px",
+          border: "1px solid #333"
+        }}>
+          <h3 style={{
+            color: "#f1c40f",
+            fontSize: "14px",
+            marginBottom: "12px",
+            textTransform: "uppercase",
+            letterSpacing: "1px"
+          }}>
+            📊 Remaining Players ({remaining.total})
+          </h3>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+            gap: "10px"
+          }}>
+            <div style={{ background: "rgba(52, 152, 219, 0.15)", border: "1px solid #3498db", padding: "10px", borderRadius: "8px", textAlign: "center" }}>
+              <div style={{ fontSize: "20px" }}>🏏</div>
+              <div style={{ color: "#3498db", fontSize: "18px", fontWeight: "bold" }}>{remaining.batsmen}</div>
+              <div style={{ color: "#888", fontSize: "11px" }}>Batsmen</div>
+            </div>
+            <div style={{ background: "rgba(231, 76, 60, 0.15)", border: "1px solid #e74c3c", padding: "10px", borderRadius: "8px", textAlign: "center" }}>
+              <div style={{ fontSize: "20px" }}>🎯</div>
+              <div style={{ color: "#e74c3c", fontSize: "18px", fontWeight: "bold" }}>{remaining.bowlers}</div>
+              <div style={{ color: "#888", fontSize: "11px" }}>Bowlers</div>
+            </div>
+            <div style={{ background: "rgba(241, 196, 15, 0.15)", border: "1px solid #f1c40f", padding: "10px", borderRadius: "8px", textAlign: "center" }}>
+              <div style={{ fontSize: "20px" }}>⭐</div>
+              <div style={{ color: "#f1c40f", fontSize: "18px", fontWeight: "bold" }}>{remaining.allRounders}</div>
+              <div style={{ color: "#888", fontSize: "11px" }}>All Rounders</div>
+            </div>
+            <div style={{ background: "rgba(155, 89, 182, 0.15)", border: "1px solid #9b59b6", padding: "10px", borderRadius: "8px", textAlign: "center" }}>
+              <div style={{ fontSize: "20px" }}>🧤</div>
+              <div style={{ color: "#9b59b6", fontSize: "18px", fontWeight: "bold" }}>{remaining.wicketKeepers}</div>
+              <div style={{ color: "#888", fontSize: "11px" }}>Keepers</div>
+            </div>
+            <div style={{ background: "rgba(46, 204, 113, 0.15)", border: "1px solid #2ecc71", padding: "10px", borderRadius: "8px", textAlign: "center" }}>
+              <div style={{ fontSize: "20px" }}>🇮🇳</div>
+              <div style={{ color: "#2ecc71", fontSize: "18px", fontWeight: "bold" }}>{remaining.indian}</div>
+              <div style={{ color: "#888", fontSize: "11px" }}>Indian</div>
+            </div>
+            <div style={{ background: "rgba(52, 152, 219, 0.15)", border: "1px solid #3498db", padding: "10px", borderRadius: "8px", textAlign: "center" }}>
+              <div style={{ fontSize: "20px" }}>✈️</div>
+              <div style={{ color: "#3498db", fontSize: "18px", fontWeight: "bold" }}>{remaining.foreign}</div>
+              <div style={{ color: "#888", fontSize: "11px" }}>Foreign</div>
             </div>
           </div>
         </div>
@@ -202,13 +334,9 @@ function AdminPanel({ onLogout, isWatchMode = false }) {
                   {currentPlayer.name}
                   {currentPlayer.isForeign && (
                     <span style={{
-                      marginLeft: "10px",
-                      fontSize: "16px",
-                      background: "rgba(52, 152, 219, 0.2)",
-                      color: "#3498db",
-                      padding: "3px 10px",
-                      borderRadius: "8px",
-                      border: "1px solid #3498db"
+                      marginLeft: "10px", fontSize: "16px",
+                      background: "rgba(52, 152, 219, 0.2)", color: "#3498db",
+                      padding: "3px 10px", borderRadius: "8px", border: "1px solid #3498db"
                     }}>
                       ✈️ Foreign
                     </span>
@@ -270,13 +398,8 @@ function AdminPanel({ onLogout, isWatchMode = false }) {
                 onClick={() => setManualResultView(true)}
                 style={{
                   background: "linear-gradient(135deg, #2ecc71, #27ae60)",
-                  color: "white",
-                  border: "none",
-                  padding: "15px 40px",
-                  borderRadius: "10px",
-                  fontSize: "18px",
-                  fontWeight: "bold",
-                  cursor: "pointer"
+                  color: "white", border: "none", padding: "15px 40px",
+                  borderRadius: "10px", fontSize: "18px", fontWeight: "bold", cursor: "pointer"
                 }}
               >
                 📊 VIEW FINAL RESULTS
@@ -284,9 +407,7 @@ function AdminPanel({ onLogout, isWatchMode = false }) {
             </div>
           ) : (
             <div className="admin-player-card">
-              <h2 style={{ textAlign: "center", padding: "50px", width: "100%" }}>
-                Loading...
-              </h2>
+              <h2 style={{ textAlign: "center", padding: "50px", width: "100%" }}>Loading...</h2>
             </div>
           )}
 
@@ -298,19 +419,13 @@ function AdminPanel({ onLogout, isWatchMode = false }) {
                   ▶️ START BIDDING
                 </button>
               ) : highestBidder ? (
-                <button
-                  className="ctrl-btn sold"
-                  onClick={handleSold}
-                  style={{ flex: 1, fontSize: "18px", padding: "18px" }}
-                >
+                <button className="ctrl-btn sold" onClick={handleSold}
+                  style={{ flex: 1, fontSize: "18px", padding: "18px" }}>
                   🔨 SOLD to {highestBidder.short} - ₹{currentBid} Cr
                 </button>
               ) : (
-                <button
-                  className="ctrl-btn unsold"
-                  onClick={handleUnsold}
-                  style={{ flex: 1, fontSize: "18px", padding: "18px" }}
-                >
+                <button className="ctrl-btn unsold" onClick={handleUnsold}
+                  style={{ flex: 1, fontSize: "18px", padding: "18px" }}>
                   ❌ UNSOLD (No bidders)
                 </button>
               )}
@@ -319,15 +434,10 @@ function AdminPanel({ onLogout, isWatchMode = false }) {
 
           {isAdmin && timerEnded && highestBidder && (
             <div style={{
-              padding: "15px",
-              background: "rgba(241, 196, 15, 0.15)",
-              border: "2px solid #f1c40f",
-              borderRadius: "10px",
-              textAlign: "center",
-              marginTop: "15px",
-              color: "#f1c40f",
-              fontSize: "16px",
-              fontWeight: "bold"
+              padding: "15px", background: "rgba(241, 196, 15, 0.15)",
+              border: "2px solid #f1c40f", borderRadius: "10px",
+              textAlign: "center", marginTop: "15px", color: "#f1c40f",
+              fontSize: "16px", fontWeight: "bold"
             }}>
               ⏰ Time's Up! Highest bidder: {highestBidder.short} at ₹{currentBid} Cr
             </div>
@@ -335,14 +445,9 @@ function AdminPanel({ onLogout, isWatchMode = false }) {
 
           {isAdmin && auctionStarted && !timerEnded && (
             <div style={{
-              padding: "15px",
-              background: "rgba(52, 152, 219, 0.1)",
-              border: "1px solid #3498db",
-              borderRadius: "10px",
-              textAlign: "center",
-              marginTop: "15px",
-              color: "#3498db",
-              fontSize: "14px"
+              padding: "15px", background: "rgba(52, 152, 219, 0.1)",
+              border: "1px solid #3498db", borderRadius: "10px",
+              textAlign: "center", marginTop: "15px", color: "#3498db", fontSize: "14px"
             }}>
               🎯 Auction is LIVE! Timer running.
             </div>
@@ -351,51 +456,65 @@ function AdminPanel({ onLogout, isWatchMode = false }) {
           {/* CAPTAIN BID BUTTON */}
           {currentPlayer && loggedInCaptain && auctionStarted && myTeam && !auctionComplete && !timerEnded && (
             <div className="admin-controls" style={{ marginTop: "20px" }}>
-              <button
-                onClick={captainBid}
-                disabled={isMyTeamHighest || myTeam.budget < nextBidAmount || foreignLimitReached}
-                style={{
+              {!canBidCheck.canBid ? (
+                // Show disabled button with reason
+                <div style={{
                   flex: 1,
                   padding: "25px",
-                  fontSize: "22px",
-                  fontWeight: "bold",
-                  border: "none",
+                  background: "rgba(231, 76, 60, 0.15)",
+                  border: "2px solid #e74c3c",
                   borderRadius: "12px",
-                  cursor: (isMyTeamHighest || myTeam.budget < nextBidAmount || foreignLimitReached) ? "not-allowed" : "pointer",
-                  color: "white",
-                  background: isMyTeamHighest
-                    ? "linear-gradient(135deg, #2ecc71, #27ae60)"
-                    : foreignLimitReached
-                      ? "#8e44ad"
+                  textAlign: "center",
+                  color: "#e74c3c",
+                  fontSize: "18px",
+                  fontWeight: "bold"
+                }}>
+                  🚫 CANNOT BID
+                  <div style={{ fontSize: "14px", marginTop: "8px", color: "#c0392b" }}>
+                    {canBidCheck.reason}
+                  </div>
+                  <div style={{ fontSize: "12px", marginTop: "5px", color: "#888" }}>
+                    You can still watch the auction
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={captainBid}
+                  disabled={isMyTeamHighest || myTeam.budget < nextBidAmount}
+                  style={{
+                    flex: 1,
+                    padding: "25px",
+                    fontSize: "22px",
+                    fontWeight: "bold",
+                    border: "none",
+                    borderRadius: "12px",
+                    cursor: (isMyTeamHighest || myTeam.budget < nextBidAmount) ? "not-allowed" : "pointer",
+                    color: "white",
+                    background: isMyTeamHighest
+                      ? "linear-gradient(135deg, #2ecc71, #27ae60)"
                       : myTeam.budget < nextBidAmount
                         ? "#555"
                         : `linear-gradient(135deg, ${myTeam.color}, #c0392b)`,
-                  transition: "0.3s",
-                  boxShadow: "0 5px 25px rgba(0,0,0,0.4)"
-                }}
-              >
-                {isMyTeamHighest
-                  ? `✅ You are HIGHEST BIDDER at ₹${currentBid} Cr`
-                  : foreignLimitReached
-                    ? `✈️ FOREIGN LIMIT REACHED (4/4)`
+                    transition: "0.3s",
+                    boxShadow: "0 5px 25px rgba(0,0,0,0.4)"
+                  }}
+                >
+                  {isMyTeamHighest
+                    ? `✅ You are HIGHEST BIDDER at ₹${currentBid} Cr`
                     : myTeam.budget < nextBidAmount
                       ? `❌ Low Budget (₹${myTeam.budget.toFixed(1)} Cr)`
-                      : `👑 BID ₹${nextBidAmount} Cr ${isForeignPlayer ? `(Foreign ${foreignCount + 1}/4)` : ''}`
-                }
-              </button>
+                      : `👑 BID ₹${nextBidAmount} Cr`
+                  }
+                </button>
+              )}
             </div>
           )}
 
           {currentPlayer && loggedInCaptain && !auctionStarted && !auctionComplete && !timerEnded && (
             <div style={{
-              padding: "20px",
-              background: "rgba(241, 196, 15, 0.1)",
-              border: "1px solid #f1c40f",
-              borderRadius: "10px",
-              textAlign: "center",
-              marginTop: "20px",
-              color: "#f1c40f",
-              fontSize: "16px"
+              padding: "20px", background: "rgba(241, 196, 15, 0.1)",
+              border: "1px solid #f1c40f", borderRadius: "10px",
+              textAlign: "center", marginTop: "20px", color: "#f1c40f", fontSize: "16px"
             }}>
               ⏳ Waiting for Admin to start bidding...
             </div>
@@ -403,14 +522,9 @@ function AdminPanel({ onLogout, isWatchMode = false }) {
 
           {currentPlayer && loggedInCaptain && timerEnded && (
             <div style={{
-              padding: "20px",
-              background: "rgba(231, 76, 60, 0.15)",
-              border: "1px solid #e74c3c",
-              borderRadius: "10px",
-              textAlign: "center",
-              marginTop: "20px",
-              color: "#e74c3c",
-              fontSize: "16px"
+              padding: "20px", background: "rgba(231, 76, 60, 0.15)",
+              border: "1px solid #e74c3c", borderRadius: "10px",
+              textAlign: "center", marginTop: "20px", color: "#e74c3c", fontSize: "16px"
             }}>
               ⏰ Bidding time ended! Waiting for admin decision...
               {isMyTeamHighest && <div style={{ color: "#2ecc71", marginTop: "10px" }}>
@@ -421,14 +535,9 @@ function AdminPanel({ onLogout, isWatchMode = false }) {
 
           {isWatchMode && !isAdmin && !loggedInCaptain && !auctionComplete && (
             <div style={{
-              padding: "15px",
-              background: "rgba(52, 152, 219, 0.1)",
-              border: "1px solid #3498db",
-              borderRadius: "10px",
-              textAlign: "center",
-              marginTop: "15px",
-              color: "#3498db",
-              fontSize: "14px"
+              padding: "15px", background: "rgba(52, 152, 219, 0.1)",
+              border: "1px solid #3498db", borderRadius: "10px",
+              textAlign: "center", marginTop: "15px", color: "#3498db", fontSize: "14px"
             }}>
               👀 You are watching the LIVE auction.
             </div>
@@ -437,52 +546,25 @@ function AdminPanel({ onLogout, isWatchMode = false }) {
           {/* CAPTAIN Squad */}
           {loggedInCaptain && myTeam && myTeam.players.length > 0 && (
             <div style={{
-              background: "#1e1e2f",
-              borderRadius: "12px",
-              padding: "20px",
-              marginTop: "20px",
+              background: "#1e1e2f", borderRadius: "12px",
+              padding: "20px", marginTop: "20px",
               border: `2px solid ${myTeam.color}44`
             }}>
-              <h3 style={{
-                color: myTeam.color,
-                marginBottom: "15px",
-                fontSize: "18px"
-              }}>
-                🏏 My Squad ({myTeam.players.length} players)
-                <span style={{
-                  marginLeft: "10px",
-                  fontSize: "13px",
-                  background: "rgba(52, 152, 219, 0.2)",
-                  color: "#3498db",
-                  padding: "3px 10px",
-                  borderRadius: "8px"
-                }}>
-                  ✈️ Foreign: {foreignCount}/4
-                </span>
+              <h3 style={{ color: myTeam.color, marginBottom: "15px", fontSize: "18px" }}>
+                🏏 My Squad ({myTeam.players.length}/{LIMITS.TOTAL})
               </h3>
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                 {myTeam.players.map((p, i) => (
                   <div key={i} style={{
-                    background: "#16162a",
-                    padding: "12px 15px",
-                    borderRadius: "10px",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
+                    background: "#16162a", padding: "12px 15px", borderRadius: "10px",
+                    display: "flex", justifyContent: "space-between", alignItems: "center",
                     borderLeft: `3px solid ${myTeam.color}`
                   }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                       <span style={{
-                        background: myTeam.color,
-                        color: "white",
-                        width: "28px",
-                        height: "28px",
-                        borderRadius: "50%",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: "13px",
-                        fontWeight: "bold"
+                        background: myTeam.color, color: "white", width: "28px", height: "28px",
+                        borderRadius: "50%", display: "flex", alignItems: "center",
+                        justifyContent: "center", fontSize: "13px", fontWeight: "bold"
                       }}>
                         {i + 1}
                       </span>
@@ -490,18 +572,15 @@ function AdminPanel({ onLogout, isWatchMode = false }) {
                         <div style={{ color: "#fff", fontWeight: "bold" }}>
                           {p.name}
                           {p.isForeign && <span style={{ marginLeft: "6px", color: "#3498db" }}>✈️</span>}
+                          {p.isCaptainPlayer && <span style={{ marginLeft: "6px", color: "#f1c40f" }}>👑</span>}
                         </div>
                         <div style={{ color: "#888", fontSize: "12px" }}>
                           {getRoleEmoji(p.role)} {p.role}
                         </div>
                       </div>
                     </div>
-                    <div style={{
-                      color: "#2ecc71",
-                      fontWeight: "bold",
-                      fontSize: "16px"
-                    }}>
-                      ₹{p.soldPrice} Cr
+                    <div style={{ color: "#2ecc71", fontWeight: "bold", fontSize: "16px" }}>
+                      {p.isCaptainPlayer ? "FREE (Captain)" : `₹${p.soldPrice} Cr`}
                     </div>
                   </div>
                 ))}
@@ -534,16 +613,13 @@ function AdminPanel({ onLogout, isWatchMode = false }) {
             <div className="admin-teams-list">
               {teams.map((team) => {
                 const isBidding = highestBidder && highestBidder.id === team.id;
-                const teamForeignCount = team.players.filter(p => p.isForeign).length;
+                const counts = getTeamCounts(team);
 
                 return (
                   <div
                     key={team.id}
                     className={`admin-team-row ${isBidding ? "is-bidding" : ""}`}
-                    style={{
-                      borderLeftColor: team.color,
-                      cursor: "default"
-                    }}
+                    style={{ borderLeftColor: team.color, cursor: "default" }}
                   >
                     <div className="admin-team-row-header">
                       <img src={team.logo} alt={team.short} className="admin-team-logo"
@@ -551,13 +627,20 @@ function AdminPanel({ onLogout, isWatchMode = false }) {
                       <div style={{ flex: 1 }}>
                         <h4 style={{ color: team.color }}>{team.short}</h4>
                         <span className="admin-team-budget">
-                          💰 ₹{team.budget.toFixed(1)} Cr | 👥 {team.players.length} | ✈️ {teamForeignCount}/4
+                          💰 ₹{team.budget.toFixed(1)} Cr | 👥 {team.players.length}/{LIMITS.TOTAL}
                           {team.captain && (
                             <span style={{ color: "#f1c40f", marginLeft: "8px" }}>
                               | 👑 {team.captain.name}
                             </span>
                           )}
                         </span>
+                        <div style={{ marginTop: "5px", fontSize: "11px", color: "#888" }}>
+                          🏏 {counts.batsmen}/{LIMITS.BATSMAN} | 
+                          🎯 {counts.bowlers}/{LIMITS.BOWLER} | 
+                          ⭐ {counts.allRounders}/{LIMITS.ALL_ROUNDER} | 
+                          🧤 {counts.keepers}/{LIMITS.WICKET_KEEPER} | 
+                          ✈️ {counts.foreign}/{LIMITS.FOREIGN}
+                        </div>
                       </div>
                       {isBidding && <span className="bidding-badge">HIGHEST</span>}
                     </div>
@@ -565,7 +648,7 @@ function AdminPanel({ onLogout, isWatchMode = false }) {
                       <div className="admin-team-players">
                         {team.players.map((p, i) => (
                           <span key={i} className="admin-player-tag">
-                            {p.name} {p.isForeign && "✈️"} (₹{p.soldPrice})
+                            {p.name} {p.isForeign && "✈️"} {p.isCaptainPlayer && "👑"} {!p.isCaptainPlayer && `(₹${p.soldPrice})`}
                           </span>
                         ))}
                       </div>
