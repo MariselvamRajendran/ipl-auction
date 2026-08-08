@@ -131,9 +131,16 @@ export const importPlayersJSON = async (jsonData) => {
 
 export const saveAuctionState = async (state) => {
   try {
-    await setDoc(doc(db, STATE_COLLECTION, AUCTION_DOC), state);
+    // Deep clean - remove undefined values (Firestore rejects undefined)
+    const cleanState = JSON.parse(JSON.stringify(state, (key, value) => {
+      return value === undefined ? null : value;
+    }));
+    
+    await setDoc(doc(db, STATE_COLLECTION, AUCTION_DOC), cleanState);
+    console.log("✅ State saved to Firebase");
   } catch (err) {
-    console.error("Error saving state:", err);
+    console.error("❌ Error saving state:", err);
+    alert("Firebase Save Error: " + err.message);
   }
 };
 
