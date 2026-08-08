@@ -34,6 +34,7 @@ export function AuctionProvider({ children }) {
 
   const stateRef = useRef({});
   const isProcessingRef = useRef(false);
+  const lastSoldIdRef = useRef(null); // Track which sold overlay was shown
 
   useEffect(() => {
     stateRef.current = {
@@ -54,7 +55,7 @@ export function AuctionProvider({ children }) {
     const players = stateRef.current.auctionPlayers;
     const idx = stateRef.current.currentPlayerIndex;
 
-    console.log(`📌 Going to next player. Current: ${idx}, Total: ${players.length}`);
+    console.log(`📌 Going to next player. Current index: ${idx}, Total: ${players.length}`);
 
     if (idx < players.length - 1) {
       const nextIndex = idx + 1;
@@ -125,6 +126,7 @@ export function AuctionProvider({ children }) {
       return;
     }
     isProcessingRef.current = true;
+    console.log("🔨 SOLD process started");
 
     try {
       const latest = await getAuctionState();
@@ -138,6 +140,8 @@ export function AuctionProvider({ children }) {
         alert("No bidder yet!");
         return;
       }
+
+      console.log(`🎯 Selling ${player.name} to ${latestHighest.short} for ₹${latestBid} Cr`);
 
       const soldPlayer = {
         ...player,
@@ -157,6 +161,8 @@ export function AuctionProvider({ children }) {
       });
 
       const sInfo = { player, team: latestHighest, bid: latestBid };
+      const soldPlayerId = player.id; // Unique identifier
+      lastSoldIdRef.current = soldPlayerId; // Mark this sold as processed
 
       setTeams(updatedTeams);
       setIsTimerRunning(false);
@@ -172,20 +178,25 @@ export function AuctionProvider({ children }) {
         isTimerRunning: false,
         showSold: true,
         soldInfo: sInfo,
+        soldPlayerId: soldPlayerId, // Track sold player ID
         timerEnded: false,
         lastUpdate: Date.now(),
       });
 
-      // Wait 4 seconds for overlay, then go to next player
+      // Wait 4 seconds for overlay
       await new Promise(resolve => setTimeout(resolve, 4000));
       
+      console.log("⏭️ Overlay time done, moving to next player");
       setShowSold(false);
       setSoldInfo(null);
+      
+      // Go to next player
       await goToNextPlayer(updatedTeams, stateRef.current.unsoldPlayers);
     } catch (err) {
-      console.error("Error in handleSold:", err);
+      console.error("❌ Error in handleSold:", err);
     } finally {
       isProcessingRef.current = false;
+      console.log("✅ SOLD process completed");
     }
   }, [goToNextPlayer]);
 
@@ -196,6 +207,7 @@ export function AuctionProvider({ children }) {
       return;
     }
     isProcessingRef.current = true;
+    console.log("❌ UNSOLD process started");
 
     try {
       const player = stateRef.current.auctionPlayers[stateRef.current.currentPlayerIndex];
@@ -207,9 +219,10 @@ export function AuctionProvider({ children }) {
 
       await goToNextPlayer(stateRef.current.teams, newUnsold);
     } catch (err) {
-      console.error("Error in handleUnsold:", err);
+      console.error("❌ Error in handleUnsold:", err);
     } finally {
       isProcessingRef.current = false;
+      console.log("✅ UNSOLD process completed");
     }
   }, [goToNextPlayer]);
 
@@ -224,6 +237,7 @@ export function AuctionProvider({ children }) {
     setAuctionReady(saved.auctionReady || false);
 
     if (!stateRef.current.isAdmin) {
+      // NON-ADMIN (Captain, Watcher): Sync everything
       setTeams(saved.teams || teamsData);
       setAuctionPlayers(saved.auctionPlayers || []);
       setCurrentPlayerIndex(saved.currentPlayerIndex || 0);
@@ -241,7 +255,9 @@ export function AuctionProvider({ children }) {
         setShowResults(true);
       }
 
-      if (saved.showSold && saved.soldInfo && !showSold) {
+      // Only show sold overlay ONCE per sold player (using ID check)
+      if (saved.showSold && saved.soldInfo && saved.soldPlayerId && lastSoldIdRef.current !== saved.soldPlayerId) {
+        lastSoldIdRef.current = saved.soldPlayerId;
         setSoldInfo(saved.soldInfo);
         setShowSold(true);
         setTimeout(() => {
@@ -250,6 +266,7 @@ export function AuctionProvider({ children }) {
         }, 4000);
       }
     } else {
+      // ADMIN: Sync only bidder-related info (NOT showSold)
       if (saved.highestBidder && JSON.stringify(saved.highestBidder) !== JSON.stringify(stateRef.current.highestBidder)) {
         setHighestBidder(saved.highestBidder);
       }
@@ -263,15 +280,13 @@ export function AuctionProvider({ children }) {
         setTimer(15);
         setIsTimerRunning(true);
       }
-      if (saved.teams && JSON.stringify(saved.teams.map(t => t.players.length)) !== JSON.stringify(stateRef.current.teams.map(t => t.players.length))) {
-        setTeams(saved.teams);
-      }
+      // DO NOT sync showSold for admin - admin handles it locally
     }
-  }, [showSold, showResults]);
+  }, [showResults]);
 
   useEffect(() => {
     syncFromServer();
-    const interval = setInterval(syncFromServer, 500);
+    const interval = setInterval(syncFromServer, 1000); // Reduced frequency
     return () => clearInterval(interval);
   }, [syncFromServer]);
 
@@ -380,6 +395,9 @@ export function AuctionProvider({ children }) {
       };
     });
 
+    // Reset sold tracking
+    lastSoldIdRef.current = null;
+
     setAuctionPlayers(formatted);
     setCurrentBid(formatted[0].basePrice);
     setCurrentPlayerIndex(0);
@@ -410,6 +428,7 @@ export function AuctionProvider({ children }) {
       isTimerRunning: false,
       showSold: false,
       soldInfo: null,
+      soldPlayerId: null,
       timerEnded: false,
       lastUpdate: Date.now(),
     });
@@ -531,12 +550,13 @@ export function AuctionProvider({ children }) {
   const closeSoldOverlay = useCallback(async () => {
     setShowSold(false);
     setSoldInfo(null);
-    await goToNextPlayer(teams, unsoldPlayers);
-  }, [goToNextPlayer, teams, unsoldPlayers]);
+    // Don't call goToNextPlayer here - handleSold already does it
+  }, []);
 
   const resetAuction = async () => {
     if (window.confirm("Reset entire auction? All progress will be lost!")) {
       await clearAuctionState();
+      lastSoldIdRef.current = null;
       setTeams(teamsData.map((t) => ({ ...t, players: [], budget: 100 })));
       setCurrentPlayerIndex(0);
       setCurrentBid(0);
